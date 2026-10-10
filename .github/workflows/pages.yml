@@ -45,15 +45,21 @@ jobs:
           asset_size() {
             jq -er --arg name "$1" '[.assets[] | select(.name == $name) | .size] | if length == 1 then .[0] else error("missing or duplicate release asset") end' "$release"
           }
+          asset_id() {
+            jq -er --arg name "$1" '[.assets[] | select(.name == $name) | .id] | if length == 1 and (.[0] | type == "number") then .[0] else error("missing or duplicate release asset ID") end' "$release"
+          }
           firmware_size="$(asset_size firmware.bin)"
           checksum_size="$(asset_size SHA256SUMS)"
           build_info_size="$(asset_size BUILD-INFO.txt)"
+          firmware_asset_id="$(asset_id firmware.bin)"
+          checksum_asset_id="$(asset_id SHA256SUMS)"
+          build_info_asset_id="$(asset_id BUILD-INFO.txt)"
           if (( firmware_size < 32 || firmware_size > 3145728 || checksum_size > 1024 || build_info_size > 16384 )); then
             echo "Latest release assets exceed the expected size limits." >&2
             exit 1
           fi
-          download_base="https://github.com/ocean-sudo/electronic-badge/releases/download/$tag"
-          curl -fsSL --retry 3 --retry-all-errors "$download_base/SHA256SUMS" -o "$RUNNER_TEMP/SHA256SUMS"
+          api_asset_base="https://api.github.com/repos/ocean-sudo/electronic-badge/releases/assets"
+          curl -fsSL --retry 3 --retry-all-errors -H 'Accept: application/octet-stream' "$api_asset_base/$checksum_asset_id" -o "$RUNNER_TEMP/SHA256SUMS"
           manifest_line="$(cat "$RUNNER_TEMP/SHA256SUMS")"
           if [[ ! "$manifest_line" =~ ^([[:xdigit:]]{64})[[:space:]]+\*?firmware\.bin$ ]]; then
             echo 'Latest release has an invalid SHA256SUMS manifest.' >&2
@@ -69,9 +75,9 @@ jobs:
           fi
           target="docs/console/firmware/$tag"
           mkdir -p "$target"
-          curl -fsSL --retry 3 --retry-all-errors "$download_base/firmware.bin" -o "$target/firmware.bin"
+          curl -fsSL --retry 3 --retry-all-errors -H 'Accept: application/octet-stream' "$api_asset_base/$firmware_asset_id" -o "$target/firmware.bin"
           cp "$RUNNER_TEMP/SHA256SUMS" "$target/SHA256SUMS"
-          curl -fsSL --retry 3 --retry-all-errors "$download_base/BUILD-INFO.txt" -o "$target/BUILD-INFO.txt"
+          curl -fsSL --retry 3 --retry-all-errors -H 'Accept: application/octet-stream' "$api_asset_base/$build_info_asset_id" -o "$target/BUILD-INFO.txt"
           if [[ "$(wc -c < "$target/firmware.bin")" -ne "$firmware_size" || "$(wc -c < "$target/SHA256SUMS")" -ne "$checksum_size" || "$(wc -c < "$target/BUILD-INFO.txt")" -ne "$build_info_size" ]]; then
             echo 'Mirrored release asset size does not match the GitHub release metadata.' >&2
             exit 1
