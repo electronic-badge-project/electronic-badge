@@ -78,19 +78,18 @@
 
     <section class="section how" id="how">
       <div>
-        <p class="eyebrow">本地运行</p>
-        <h2>控制服务在你的电脑上。</h2>
-        <p>在线控制台由 GitHub Pages 托管静态文件；浏览器通过 Web Serial 在你的电脑上直接连接徽章，不经过云端中继。图片处理与 USB 串口通信均在本机进行。</p>
-        <p><a class="button" href="console/">打开在线控制台 ↗</a></p>
+        <p class="eyebrow">直接连接</p>
+        <h2>HTTPS 静态页面直连 USB 串口。</h2>
+        <p>图片处理与 USB 通信均在浏览器本机完成，不经过云端中继。</p>
         <ol>
-          <li>安装 Python 依赖并连接 USB</li>
-          <li>在本机启动服务并打开网页</li>
-          <li>裁切图片，确认后上传到徽章</li>
+          <li>使用 HTTPS 打开控制台</li>
+          <li>点击“连接徽章”，在浏览器选择徽章串口</li>
+          <li>裁切图片，确认后直接上传</li>
         </ol>
       </div>
       <figure>
-        <img src="assets/architecture.svg" alt="本机浏览器通过 Python USB 串口服务连接图片徽章的结构图" loading="lazy">
-        <figcaption>控制链路留在本机；项目介绍页不接入设备。</figcaption>
+        <img src="assets/architecture.svg" alt="HTTPS 静态页面在浏览器本机处理图片，并通过 Web Serial 直接连接 USB 图片徽章；无云端中继" loading="lazy">
+        <figcaption>GitHub Pages 只托管静态文件；图片处理与 USB 数据传输留在浏览器和本机设备之间。</figcaption>
       </figure>
     </section>
 
@@ -112,9 +111,9 @@
         <p>仓库提供可复制的提示词与手动步骤。先逐条审阅命令；已有设备升级仅写应用分区，保留文件系统和设备设置。</p>
       </div>
       <aside class="safe-card">
-        <p>✓ 默认只监听本机回环地址</p>
-        <p>✓ 服务没有登录认证，不要公开暴露</p>
-        <p>✓ 旧 v1 图片需在升级前导出、备份并转换</p>
+        <p>✓ 固件更新仅写应用分区，保留文件系统与设备设置</p>
+        <p>✓ Web Serial 权限仅由用户操作触发</p>
+        <p>✓ 按 origin 授权；只在信任的 HTTPS 站点连接</p>
         <a href="https://github.com/ocean-sudo/electronic-badge#ai-deployment">查看 AI 部署与迁移说明 →</a>
       </aside>
     </section>
