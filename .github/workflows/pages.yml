@@ -1,4 +1,4 @@
-name: 部署中文介绍主页
+name: 部署静态页面与固件镜像
 
 on:
   push:
@@ -6,6 +6,8 @@ on:
     paths:
       - 'docs/**'
       - '.github/workflows/pages.yml'
+  schedule:
+    - cron: '*/5 * * * *'
   workflow_dispatch:
 
 permissions: {}
@@ -27,12 +29,69 @@ jobs:
     steps:
       - name: 检出项目源码
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - name: 配置 GitHub Pages
+      - name: Mirror latest stable firmware for same-origin browser downloads
+        id: mirror
+        env:
+          PAGES_ORIGIN: https://electronic-badge-project.github.io/electronic-badge
+        run: |
+          set -euo pipefail
+          release="$RUNNER_TEMP/latest-release.json"
+          curl -fsSL --retry 3 --retry-all-errors -H 'Accept: application/vnd.github+json' 'https://api.github.com/repos/ocean-sudo/electronic-badge/releases/latest' -o "$release"
+          tag="$(jq -er '.tag_name' "$release")"
+          if [[ ! "$tag" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || ! jq -e '.draft == false and .prerelease == false' "$release" >/dev/null; then
+            echo "Latest release is not a stable vMAJOR.MINOR.PATCH release: $tag" >&2
+            exit 1
+          fi
+          asset_size() {
+            jq -er --arg name "$1" '[.assets[] | select(.name == $name) | .size] | if length == 1 then .[0] else error("missing or duplicate release asset") end' "$release"
+          }
+          firmware_size="$(asset_size firmware.bin)"
+          checksum_size="$(asset_size SHA256SUMS)"
+          build_info_size="$(asset_size BUILD-INFO.txt)"
+          if (( firmware_size < 32 || firmware_size > 3145728 || checksum_size > 1024 || build_info_size > 16384 )); then
+            echo "Latest release assets exceed the expected size limits." >&2
+            exit 1
+          fi
+          download_base="https://github.com/ocean-sudo/electronic-badge/releases/download/$tag"
+          curl -fsSL --retry 3 --retry-all-errors "$download_base/SHA256SUMS" -o "$RUNNER_TEMP/SHA256SUMS"
+          manifest_line="$(cat "$RUNNER_TEMP/SHA256SUMS")"
+          if [[ ! "$manifest_line" =~ ^([[:xdigit:]]{64})[[:space:]]+\*?firmware\.bin$ ]]; then
+            echo 'Latest release has an invalid SHA256SUMS manifest.' >&2
+            exit 1
+          fi
+          expected_sha="$(printf '%s' "$manifest_line" | cut -c1-64 | tr '[:upper:]' '[:lower:]')"
+          if [[ "$GITHUB_EVENT_NAME" == schedule ]] && curl -fsSL "$PAGES_ORIGIN/console/firmware/current.json?ts=$(date +%s)" -o "$RUNNER_TEMP/current.json"; then
+            if jq -e --arg tag "$tag" --arg sha "$expected_sha" '.tag_name == $tag and .sha256 == $sha' "$RUNNER_TEMP/current.json" >/dev/null; then
+              echo 'deploy=false' >> "$GITHUB_OUTPUT"
+              echo "Pages already serves $tag ($expected_sha); skipping deployment."
+              exit 0
+            fi
+          fi
+          target="docs/console/firmware/$tag"
+          mkdir -p "$target"
+          curl -fsSL --retry 3 --retry-all-errors "$download_base/firmware.bin" -o "$target/firmware.bin"
+          cp "$RUNNER_TEMP/SHA256SUMS" "$target/SHA256SUMS"
+          curl -fsSL --retry 3 --retry-all-errors "$download_base/BUILD-INFO.txt" -o "$target/BUILD-INFO.txt"
+          if [[ "$(wc -c < "$target/firmware.bin")" -ne "$firmware_size" || "$(wc -c < "$target/SHA256SUMS")" -ne "$checksum_size" || "$(wc -c < "$target/BUILD-INFO.txt")" -ne "$build_info_size" ]]; then
+            echo 'Mirrored release asset size does not match the GitHub release metadata.' >&2
+            exit 1
+          fi
+          actual_sha="$(sha256sum "$target/firmware.bin" | cut -d ' ' -f 1)"
+          if [[ "$actual_sha" != "$expected_sha" ]]; then
+            echo 'Mirrored firmware does not match SHA256SUMS.' >&2
+            exit 1
+          fi
+          jq -n --arg tag "$tag" --arg sha "$actual_sha" --argjson size "$firmware_size" '{tag_name:$tag,sha256:$sha,size:$size}' > docs/console/firmware/current.json
+          echo 'deploy=true' >> "$GITHUB_OUTPUT"
+      - name: Configure GitHub Pages
+        if: steps.mirror.outputs.deploy == 'true'
         uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
       - name: 上传静态介绍页
+        if: steps.mirror.outputs.deploy == 'true'
         uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3
         with:
           path: docs
       - name: 发布介绍主页
+        if: steps.mirror.outputs.deploy == 'true'
         id: deployment
         uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4
