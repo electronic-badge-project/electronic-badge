@@ -33,10 +33,33 @@ jobs:
         id: mirror
         env:
           PAGES_ORIGIN: https://electronic-badge-project.github.io/electronic-badge
+          FIRMWARE_RELEASE_TOKEN: ${{ secrets.FIRMWARE_RELEASE_TOKEN }}
         run: |
           set -euo pipefail
+          if [[ -z "$FIRMWARE_RELEASE_TOKEN" ]]; then
+            echo 'Set the Pages Actions secret FIRMWARE_RELEASE_TOKEN with Contents: read access to ocean-sudo/electronic-badge.' >&2
+            exit 1
+          fi
+          release_api='https://api.github.com/repos/ocean-sudo/electronic-badge/releases'
+          release_get() {
+            local url="$release_api/$1" accept="$2" output="$3"
+            local headers="$RUNNER_TEMP/release-response-headers" status rc=0
+            : > "$headers"
+            status="$(curl --fail --silent --show-error --location --proto-redir '=https' --retry 3 \
+              --header "Accept: $accept" --header @- \
+              --dump-header "$headers" --output "$output" --write-out '%{http_code}' "$url" \
+              <<< "Authorization: Bearer $FIRMWARE_RELEASE_TOKEN")" || rc=$?
+            if (( rc == 0 )) && [[ "$status" == 200 ]]; then
+              return 0
+            fi
+            printf 'Release API GET %s failed: HTTP %s (curl %s).\n' "$url" "$status" "$rc" >&2
+            # Do not print the full headers: asset redirects contain signed URLs.
+            awk 'tolower($0) ~ /^(retry-after|x-ratelimit-(limit|remaining|reset|resource|used)):/ { sub(/\r$/, ""); print }' "$headers" >&2
+            return 1
+          }
+
           release="$RUNNER_TEMP/latest-release.json"
-          curl -fsSL --retry 3 --retry-all-errors -H 'Accept: application/vnd.github+json' 'https://api.github.com/repos/ocean-sudo/electronic-badge/releases/latest' -o "$release"
+          release_get latest application/vnd.github+json "$release"
           tag="$(jq -er '.tag_name' "$release")"
           if [[ ! "$tag" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || ! jq -e '.draft == false and .prerelease == false' "$release" >/dev/null; then
             echo "Latest release is not a stable vMAJOR.MINOR.PATCH release: $tag" >&2
@@ -58,8 +81,7 @@ jobs:
             echo "Latest release assets exceed the expected size limits." >&2
             exit 1
           fi
-          api_asset_base="https://api.github.com/repos/ocean-sudo/electronic-badge/releases/assets"
-          curl -fsSL --retry 3 --retry-all-errors -H 'Accept: application/octet-stream' "$api_asset_base/$checksum_asset_id" -o "$RUNNER_TEMP/SHA256SUMS"
+          release_get "assets/$checksum_asset_id" application/octet-stream "$RUNNER_TEMP/SHA256SUMS"
           manifest_line="$(cat "$RUNNER_TEMP/SHA256SUMS")"
           if [[ ! "$manifest_line" =~ ^([[:xdigit:]]{64})[[:space:]]+\*?firmware\.bin$ ]]; then
             echo 'Latest release has an invalid SHA256SUMS manifest.' >&2
@@ -75,9 +97,9 @@ jobs:
           fi
           target="docs/console/firmware/$tag"
           mkdir -p "$target"
-          curl -fsSL --retry 3 --retry-all-errors -H 'Accept: application/octet-stream' "$api_asset_base/$firmware_asset_id" -o "$target/firmware.bin"
+          release_get "assets/$firmware_asset_id" application/octet-stream "$target/firmware.bin"
           cp "$RUNNER_TEMP/SHA256SUMS" "$target/SHA256SUMS"
-          curl -fsSL --retry 3 --retry-all-errors -H 'Accept: application/octet-stream' "$api_asset_base/$build_info_asset_id" -o "$target/BUILD-INFO.txt"
+          release_get "assets/$build_info_asset_id" application/octet-stream "$target/BUILD-INFO.txt"
           if [[ "$(wc -c < "$target/firmware.bin")" -ne "$firmware_size" || "$(wc -c < "$target/SHA256SUMS")" -ne "$checksum_size" || "$(wc -c < "$target/BUILD-INFO.txt")" -ne "$build_info_size" ]]; then
             echo 'Mirrored release asset size does not match the GitHub release metadata.' >&2
             exit 1

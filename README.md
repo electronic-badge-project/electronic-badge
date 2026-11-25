@@ -17,4 +17,8 @@
 
 组织仓库采用 GitHub Free 的公开仓库与原生 GitHub Pages，不设置自定义域名或 `CNAME`。在仓库的 **Settings → Pages** 中选择 **GitHub Actions**，由工作流发布 `main` 分支中的 `docs/`。
 
+发布前，在 Pages 仓库的 **Settings → Secrets and variables → Actions** 设置仓库 secret `FIRMWARE_RELEASE_TOKEN`。使用 fine-grained PAT：资源所有者选 `ocean-sudo`，仅授权 `electronic-badge`，仓库权限仅需 **Contents: Read-only**。也可以运行 `gh secret set FIRMWARE_RELEASE_TOKEN --repo electronic-badge-project/electronic-badge` 并在提示时输入令牌。不要把令牌写入文件或命令行参数。
+
+Pages 工作流使用该令牌读取固件 Release 元数据和附件，校验 SHA-256 后才部署。缺少令牌会停止部署；请求失败会记录 API 端点、HTTP 状态和限流相关响应头，不输出令牌或附件的签名下载地址。
+
 页面由 GitHub Pages 静态托管。可在支持 Web Serial 的浏览器中打开 [`docs/console/`](docs/console/) 控制台，由浏览器在用户本机直接连接 USB 徽章；设备连接与数据传输不经过云端中继。
