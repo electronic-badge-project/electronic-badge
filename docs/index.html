@@ -3,67 +3,96 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#101927">
-  <meta name="description" content="USB 图片徽章：ESP32-S3 圆形图片徽章固件与本地网页控制台。">
-  <title>USB 图片徽章｜本地控制，随身展示</title>
-  <link rel="icon" href="assets/showcase.svg" type="image/svg+xml">
+  <meta name="theme-color" content="#0c0b09">
+  <meta name="color-scheme" content="dark">
+  <meta name="description" content="USB 图片徽章：ESP32-S3 圆形图片徽章固件与 Web Serial 控制台。">
+  <title>USB 图片徽章｜浏览器直连，随身展示</title>
+  <link rel="icon" href="assets/mark.svg" type="image/svg+xml">
   <link rel="stylesheet" href="assets/site.css">
 </head>
 <body>
-  <header class="topbar">
-    <a class="brand" href="#top">● USB 图片徽章</a>
-    <nav aria-label="主导航">
-      <a href="#features">功能</a>
-      <a href="console/">在线控制台</a>
-      <a href="#console">控制台预览</a>
-      <a href="#how">使用方式</a>
-      <a href="#limits">实测边界</a>
-      <a href="#safe">安全部署</a>
-      <a class="repo-link" href="https://github.com/ocean-sudo/electronic-badge">查看源码 ↗</a>
-    </nav>
-  </header>
+  <a class="skip" href="#top">跳到正文</a>
+  <div class="topbar-wrap">
+    <header class="topbar">
+      <a class="brand" href="#top">
+        <svg class="logo" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="11" fill="none" stroke="#e7c48a" stroke-width="1.6"/><circle cx="16" cy="16" r="4.5" fill="#e7c48a"/></svg>
+        USB 图片徽章
+      </a>
+      <nav aria-label="主导航">
+        <a href="#features">功能</a>
+        <a href="#console">控制台预览</a>
+        <a href="#how">使用方式</a>
+        <a href="#limits">实测边界</a>
+        <a href="#safe">安全部署</a>
+        <a class="nav-cta" href="console/">打开控制台</a>
+      </nav>
+    </header>
+  </div>
 
   <main id="top">
     <section class="hero">
       <div class="hero-copy">
-        <p class="eyebrow">ESP32-S3 · 圆形屏幕 · 本地控制</p>
-        <h1>让喜欢的画面，<br><em>成为随身徽章。</em></h1>
-        <p class="lede">为圆形图片徽章提供固件与本地网页控制台：在电脑上裁切、管理图片，由设备独立显示、轮播与熄屏。</p>
-        <a class="button" href="console/">打开在线控制台 ↗</a>
-        <a class="button" href="https://github.com/ocean-sudo/electronic-badge">浏览 GitHub 源码 ↗</a>
-        <p class="fine">适配 Waveshare ESP32-S3-Touch-AMOLED-1.75C</p>
+        <p class="eyebrow">ESP32-S3 · 圆形屏幕 · Web Serial</p>
+        <h1>让喜欢的画面，<br>成为随身徽章。</h1>
+        <p class="lede">通过 HTTPS 静态页面在电脑浏览器中裁切、管理图片，并用 Web Serial 直连徽章；无需安装 PWA、本机服务或原生助手。</p>
+        <div class="hero-actions">
+          <a class="button" href="console/">打开 Web Serial 控制台</a>
+          <a class="textlink" href="https://github.com/ocean-sudo/electronic-badge">查看源码</a>
+        </div>
+        <p class="fine">适配 Waveshare ESP32-S3-Touch-AMOLED-1.75C · 桌面 Chromium / Firefox 151+</p>
       </div>
       <figure class="hero-art">
+        <div class="bezel">
+          <img src="assets/showcase.svg" alt="原创几何合成插画；演示界面，合成素材，不连接真实设备">
+        </div>
         <figcaption>演示界面 · 合成素材 · 不连接真实设备</figcaption>
       </figure>
     </section>
 
-    <div class="ribbon">浏览器裁切　·　JPEG 图片管理　·　设备端轮播　·　USB 串口控制</div>
+    <div class="specbar">
+      <ul>
+        <li>浏览器裁切</li>
+        <li>JPEG 图片管理</li>
+        <li>设备端轮播</li>
+        <li>USB 串口控制</li>
+      </ul>
+    </div>
 
     <section class="section" id="features">
       <p class="eyebrow">功能概览</p>
       <h2>从电脑准备画面，设备负责展示。</h2>
-      <div class="cards">
+      <div class="feature-list">
         <article>
-          <h3><span>01</span> 挑选与裁切</h3>
-          <p>导入 JPG、PNG 或 WebP，在圆形预览中调整构图。选择图片不会自动上传，明确确认后才传输。</p>
+          <span class="num">01</span>
+          <div>
+            <h3>挑选与裁切</h3>
+            <p>导入 JPG、PNG 或 WebP，在圆形预览中调整构图。选择图片不会自动上传，明确确认后才传输。</p>
+          </div>
         </article>
         <article>
-          <h3><span>02</span> 设备端播放</h3>
-          <p>管理图片、亮度、动画与熄屏。轮播由固件执行；关闭浏览器网页或拔掉 USB 后仍可继续。</p>
+          <span class="num">02</span>
+          <div>
+            <h3>设备端播放</h3>
+            <p>管理图片、亮度和动画。USB/VBUS 或未知供电时在线熄屏；电池供电时手动 SLEEP 和电池闲置超时都请求 AXP2101 PMIC 软件关机，不进入 ESP32 深睡。屏幕熄灭时拔掉 USB 转为电池供电也请求 PMIC 关机；关机后按住 POWER 约 2 秒冷启动。</p>
+          </div>
         </article>
         <article>
-          <h3><span>03</span> 完整性校验</h3>
-          <p>图片传输带有 CRC 校验；网页可读取设备保存的 JPEG 成品，目录使用稳定 ID。</p>
+          <span class="num">03</span>
+          <div>
+            <h3>完整性校验</h3>
+            <p>图片传输带有 CRC 校验；网页可读取设备保存的 JPEG 成品，目录使用稳定 ID。</p>
+          </div>
         </article>
       </div>
+      <p class="aside-note">图片切换支持直接、淡变、水平推入与低成本径向涟漪；涟漪以较硬的扩展边缘换取较低渲染成本。</p>
     </section>
 
-    <section class="section console-section" id="console">
-      <p class="eyebrow">实际控制台 · 在线操作</p>
-      <h2>本机网页界面，不是云端控制器。</h2>
-      <p class="section-copy">截图来自项目实际控制台；裁切预览中的画面为原创合成素材。为保护设备，截图时未连接徽章，设备 API 请求在浏览器端拦截；因此状态显示未连接，上传不可用。该图不是实机照片，也不是模拟设备数据。</p>
-      <figure class="console-shot">
+    <section class="section band" id="console">
+      <p class="eyebrow">实际控制台 · HTTPS 静态页面</p>
+      <h2>浏览器通过 Web Serial 直接控制徽章。</h2>
+      <p class="section-copy">截图来自项目实际控制台；裁切预览中的画面为原创合成素材，截图时未连接徽章。控制台本身可在支持 Web Serial 的桌面 Chromium 或 Firefox 151+ 中使用：点击连接后由浏览器显示串口选择器，页面不会把图片上传到云端。</p>
+      <figure class="browser">
+        <div class="browser-bar" aria-hidden="true"><i></i><i></i><i></i><span class="browser-url">console/</span></div>
         <picture>
           <source media="(max-width: 620px)" srcset="assets/console-mobile.webp">
           <img src="assets/console-desktop.webp" alt="项目实际网页控制台的合成图片裁切界面；离线演示、未连接设备" loading="lazy">
@@ -73,27 +102,31 @@
       <div class="shot-links">
         <a href="assets/console-desktop.webp">查看桌面截图</a>
         <a href="assets/console-mobile.webp">查看手机截图</a>
+        <a href="console/">打开控制台</a>
       </div>
     </section>
 
-    <section class="section how" id="how">
-      <div>
-        <p class="eyebrow">直接连接</p>
-        <h2>HTTPS 静态页面直连 USB 串口。</h2>
-        <p>图片处理与 USB 通信均在浏览器本机完成，不经过云端中继。</p>
-        <ol>
-          <li>使用 HTTPS 打开控制台</li>
-          <li>点击“连接徽章”，在浏览器选择徽章串口</li>
-          <li>裁切图片，确认后直接上传</li>
-        </ol>
+    <section class="section" id="how">
+      <div class="how">
+        <div>
+          <p class="eyebrow">直接连接</p>
+          <h2>静态页面直连 USB 串口。</h2>
+          <p>连接数据线后，在支持 Web Serial 的桌面浏览器中打开控制台并点击“连接徽章”。浏览器权限选择必须由用户操作触发，不需要 Python 服务、PWA 或本机助手。</p>
+          <ol class="steps">
+            <li><span>01</span><div>使用 HTTPS 打开控制台并连接 USB</div></li>
+            <li><span>02</span><div>在浏览器设备选择器中选择徽章串口</div></li>
+            <li><span>03</span><div>裁切图片，确认后直接传到徽章</div></li>
+          </ol>
+          <p class="origin">串口权限绑定 origin，而不是项目路径；同一 <code>*.github.io</code> 主机名下的其他仓库页面可能同源并枚举已授权端口。只在信任的站点授权；需要隔离时使用专用自定义子域。</p>
+        </div>
+        <figure>
+          <img src="assets/architecture.svg" alt="HTTPS 浏览器页面通过 Web Serial 直接连接图片徽章的结构图" loading="lazy">
+          <figcaption>页面静态托管；图片处理和 USB 数据传输留在浏览器与本机设备之间。</figcaption>
+        </figure>
       </div>
-      <figure>
-        <img src="assets/architecture.svg" alt="HTTPS 静态页面在浏览器本机处理图片，并通过 Web Serial 直接连接 USB 图片徽章；无云端中继" loading="lazy">
-        <figcaption>GitHub Pages 只托管静态文件；图片处理与 USB 数据传输留在浏览器和本机设备之间。</figcaption>
-      </figure>
     </section>
 
-    <section class="section limits" id="limits">
+    <section class="section" id="limits">
       <p class="eyebrow">实测与边界</p>
       <h2>说明能力，也说明限制。</h2>
       <div class="stats">
@@ -101,28 +134,37 @@
         <div><strong>0.85</strong><span>浏览器 Canvas 编码质量参数</span></div>
         <div><strong>228–284 ms</strong><span>42 张自然照片解码路径实测</span></div>
       </div>
-      <p>设备用 ESP32-S3 ROM 软件 TJpgDec 解码 JPEG。WebP 输入由浏览器转码，不由设备解码。解码测量含文件读取、CRC 校验及 RGB 转换；会随图片和 I/O 变化，不是性能保证。</p>
+      <div class="prose">
+        <p>设备用 ESP32-S3 ROM 软件 TJpgDec 解码 JPEG。WebP 输入由浏览器转码，不由设备解码。解码测量含文件读取、CRC 校验及 RGB 转换；会随图片和 I/O 变化，不是性能保证。</p>
+        <p>睡眠行为依供电方式而异：USB/VBUS（包括充电器）或电源状态未知时，睡眠只关闭显示与 IMU，USB 控制保持在线；电池供电时，手动 SLEEP、USB 熄屏后拔线转为电池供电，及电池闲置超时均在当前操作完成、输入释放和 PMIC 就绪检查通过后请求 AXP2101 PMIC 软件关机，不进入 ESP32 深度睡眠，也不依赖 GPIO3 EXT0 唤醒。PMIC ONLEVEL 设为 2 秒并回读确认；关机后需按住 POWER 约 2 秒冷启动，USB 控制断开且触屏不能唤醒。电池闲置超时默认关闭（0 秒）；设备重启会清空 RAM 播放历史，PMIC 关机不保留轮播中的临时当前图片，但已保存设置仍保留。USB/未知供电熄屏仍保持在线；实际耗电变化尚未实测。</p>
+      </div>
     </section>
 
-    <section class="section safe" id="safe">
-      <div>
-        <p class="eyebrow">安全地开始</p>
-        <h2>推荐 AI 辅助部署，<br>而非一键刷机。</h2>
-        <p>仓库提供可复制的提示词与手动步骤。先逐条审阅命令；已有设备升级仅写应用分区，保留文件系统和设备设置。</p>
+    <section class="section" id="safe">
+      <div class="safe">
+        <div>
+          <p class="eyebrow">安全地开始</p>
+          <h2>推荐 AI 辅助部署，<br>而非一键刷机。</h2>
+          <p>仓库提供可复制的提示词与手动步骤。先逐条审阅命令；已有设备升级仅写应用分区，保留文件系统和设备设置。</p>
+        </div>
+        <aside class="safe-card">
+          <p>串口选择器必须由用户点击触发</p>
+          <p>权限按 origin 保存，只授权信任的站点</p>
+          <p>旧 v1 图片需在升级前导出、备份并转换</p>
+          <a href="console/">打开 Web Serial 控制台</a>
+        </aside>
       </div>
-      <aside class="safe-card">
-        <p>✓ 固件更新仅写应用分区，保留文件系统与设备设置</p>
-        <p>✓ Web Serial 权限仅由用户操作触发</p>
-        <p>✓ 按 origin 授权；只在信任的 HTTPS 站点连接</p>
-        <a href="https://github.com/ocean-sudo/electronic-badge#ai-deployment">查看 AI 部署与迁移说明 →</a>
-      </aside>
     </section>
   </main>
 
   <footer class="footer">
-    <a class="brand" href="#top">● USB 图片徽章</a>
+    <a class="brand" href="#top">
+      <svg class="logo" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="11" fill="none" stroke="#e7c48a" stroke-width="1.6"/><circle cx="16" cy="16" r="4.5" fill="#e7c48a"/></svg>
+      USB 图片徽章
+    </a>
     <span>合成演示素材 · 不含设备照片</span>
-    <a href="https://github.com/ocean-sudo/electronic-badge">GitHub 项目仓库 ↗</a>
+    <a href="https://github.com/ocean-sudo/electronic-badge">GitHub 项目仓库</a>
+    <a href="console/">Web Serial 控制台</a>
     <a href="assets/homepage-desktop.webp">桌面主页截图</a>
     <a href="assets/homepage-mobile.webp">手机主页截图</a>
   </footer>
