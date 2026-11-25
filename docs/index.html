@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="text-scale" content="scale">
   <meta name="color-scheme" content="light dark">
-  <meta name="theme-color" content="#f5f5f7" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
   <meta name="description" content="USB 图片徽章：一块圆形屏幕，在浏览器里裁好画面，再用 Web Serial 直接送到设备上。">
   <title>USB 图片徽章</title>
@@ -14,9 +14,10 @@
 </head>
 <body>
   <a class="skip" href="#top">跳到正文</a>
+  <div class="scroll-sentinel" aria-hidden="true"></div>
   <header class="site-header">
     <div class="header-inner">
-      <a class="brand" href="#top" aria-current="page">
+      <a class="brand" href="#top">
         <svg class="logo" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="11" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="16" cy="16" r="4.5" fill="currentColor"/></svg>
         USB 图片徽章
       </a>
@@ -25,114 +26,158 @@
           <span>菜单</span>
         </button>
         <ul id="site-menu" class="site-menu" popover="auto">
-          <li><a href="#story">外观</a></li>
+          <li><a href="#look">外观</a></li>
           <li><a href="#screen">画面</a></li>
+          <li><a href="#side">按键</a></li>
           <li><a href="#port">接口</a></li>
           <li><a href="#specs">规格</a></li>
         </ul>
       </nav>
-      <a class="nav-cta" href="console/">打开控制台</a>
+      <a class="link nav-link" href="console/">打开控制台 ›</a>
     </div>
   </header>
 
   <main id="top">
-    <section class="story" id="story">
-      <article class="chapter-open">
-        <p class="kicker">圆形屏幕，随身戴着。</p>
-        <h1>让喜欢的画面，成为随身徽章。</h1>
-        <p class="lede">在浏览器里裁好，用 USB 直接送到这块圆屏上。不需要安装助手。</p>
-        <div class="hero-actions">
-          <a class="button" href="console/">打开控制台</a>
-          <a class="textlink" href="#specs">查看规格</a>
+    <section class="film" id="film">
+      <div class="scene">
+        <div class="veil" aria-hidden="true"></div>
+        <div class="hero-copy">
+          <h1>USB 图片徽章</h1>
+          <p class="tagline">让喜欢的画面，成为随身徽章。</p>
+          <div class="hero-actions">
+            <a class="pill" href="console/">打开控制台</a>
+            <a class="link" href="#look">了解更多 ›</a>
+          </div>
         </div>
+        <div class="stage">
+          <div class="stage-frame">
+            <div class="stage-shadow" aria-hidden="true"></div>
+            <div class="stage-view">
+              <canvas id="badge-stage" aria-label="USB 图片徽章的三维模型"></canvas>
+              <img class="stage-fallback" src="assets/showcase.svg" alt="圆形屏幕上的合成风景。三维模型未能载入时显示这张图。" width="466" height="466">
+            </div>
+            <button type="button" id="demo-toggle" class="pause">播放画面</button>
+          </div>
+          <p id="stage-status" class="status is-quiet" role="status">正在准备产品模型。</p>
+        </div>
+        <div class="overlay" aria-hidden="true">
+          <p class="cap cap-look">正面，是一整块圆屏。</p>
+          <p class="cap cap-screen">画面，就换在这块屏上。</p>
+          <p class="cap cap-side">右侧两颗按键。</p>
+          <p class="cap cap-port">底部，USB-C。</p>
+        </div>
+      </div>
+      <article class="beat" id="look">
+        <h2>正面，是一整块圆屏。</h2>
+        <p>铝壳包着玻璃边。继续往下，模型会转到侧面，再让你看见底部的接口。</p>
       </article>
+      <article class="beat beat-screen" id="screen">
+        <h2>画面，就换在这块屏上。</h2>
+        <p>裁切、轮播和切换都发生在圆里。现在播放的是演示画面，不是从设备读回来的照片。</p>
+      </article>
+      <article class="beat" id="side">
+        <h2>右侧两颗按键。</h2>
+        <p>短按 BOOT 开合菜单，长按约一秒进入睡眠。另一颗是电源键。</p>
+      </article>
+      <article class="beat" id="port">
+        <h2>底部，USB-C。</h2>
+        <p>插上线，在桌面浏览器里点连接。串口选择器由浏览器自己弹出，页面不把图片传到云端。</p>
+      </article>
+    </section>
 
-      <div class="stage">
-        <div class="stage-view">
-          <canvas id="badge-stage" aria-label="USB 图片徽章的三维模型"></canvas>
-          <img class="stage-fallback" src="assets/showcase.svg" alt="圆形屏幕上的合成风景。三维模型未能载入时显示这张图。">
-          <div class="stage-shadow" aria-hidden="true"></div>
+    <section class="band band-gray" aria-labelledby="highlights-title">
+      <div class="band-inner">
+        <h2 id="highlights-title">记在这几件事上。</h2>
+        <div class="bento">
+          <article>
+            <p class="stat">466</p>
+            <h3>圆形屏幕</h3>
+            <p>466 × 466 的 JPEG。裁切在浏览器里完成。</p>
+          </article>
+          <article>
+            <h3>Web Serial</h3>
+            <p>115200 baud。串口选择器由你自己点开。</p>
+          </article>
+          <article>
+            <h3>不上传</h3>
+            <p>没有后台，也没有本机助手。图片留在这台电脑上。</p>
+          </article>
         </div>
-        <div class="stage-bar">
-          <p id="stage-status" class="stage-status">正在准备产品模型。</p>
-          <button type="button" id="demo-toggle">播放画面</button>
-        </div>
-        <p class="stage-caption">产品模型可随滚动转动。屏幕里是合成演示，没有连接设备。</p>
-      </div>
-
-      <div class="chapters">
-        <article class="chapter" id="look">
-          <h2>正面，是一整块圆屏。</h2>
-          <p>铝壳包着玻璃边。继续往下，模型会转到侧面，再让你看见底部的接口。</p>
-        </article>
-        <article class="chapter" id="screen">
-          <h2>画面，就换在这块屏上。</h2>
-          <p>裁切、轮播和切换都发生在圆里。现在播放的是演示画面，不是从设备读回来的照片。</p>
-        </article>
-        <article class="chapter" id="side">
-          <h2>右侧两颗按键。</h2>
-          <p>短按 BOOT 开合菜单，长按约一秒进入睡眠。另一颗是电源键。</p>
-        </article>
-        <article class="chapter" id="port">
-          <h2>底部，USB-C。</h2>
-          <p>插上线，在桌面浏览器里点连接。串口选择器由浏览器自己弹出，页面不把图片传到云端。</p>
-        </article>
+        <p class="fine">桌面 Chromium，或 Firefox 151+。硬件是 ESP32-S3-Touch-AMOLED-1.75C。</p>
       </div>
     </section>
 
-    <section class="specs" id="specs" aria-labelledby="specs-title">
-      <h2 id="specs-title">它是这样一块徽章。</h2>
-      <dl>
-        <div><dt>屏幕</dt><dd>466 × 466 圆形 JPEG</dd></div>
-        <div><dt>硬件</dt><dd>ESP32-S3-Touch-AMOLED-1.75C</dd></div>
-        <div><dt>连接</dt><dd>Web Serial，115200 baud</dd></div>
-        <div><dt>浏览器</dt><dd>桌面 Chromium，或 Firefox 151+</dd></div>
-      </dl>
-    </section>
-
-    <section class="console-preview" id="console">
-      <div class="console-copy">
+    <section class="band" id="console">
+      <div class="band-inner band-center">
         <h2>控制台是用来做事的。</h2>
         <p>裁切、传图、亮度、轮播和固件都在那一页。点连接之后，才由你选择串口。</p>
-        <a class="button" href="console/">打开 Web Serial 控制台</a>
+        <a class="pill" href="console/">打开控制台</a>
+        <figure class="shot">
+          <picture>
+            <source media="(max-width: 40em)" srcset="assets/console-mobile.webp">
+            <img src="assets/console-desktop.webp" alt="网页控制台的裁切界面。截图时未连接徽章，预览图为合成素材。" width="1440" height="900" loading="lazy">
+          </picture>
+        </figure>
       </div>
-      <figure class="browser">
-        <div class="browser-bar" aria-hidden="true"><i></i><i></i><i></i><span class="browser-url">console/</span></div>
-        <picture>
-          <source media="(max-width: 40em)" srcset="assets/console-mobile.webp">
-          <img src="assets/console-desktop.webp" alt="网页控制台的裁切界面。截图时未连接徽章，预览图为合成素材。" width="1440" height="900" loading="lazy">
-        </picture>
-      </figure>
+    </section>
+
+    <section class="band band-gray" id="specs" aria-labelledby="specs-title">
+      <div class="band-inner">
+        <h2 id="specs-title">规格。</h2>
+        <div class="figures">
+          <p><strong>466×466</strong> 圆形 JPEG</p>
+          <p><strong>115200</strong> Web Serial</p>
+          <p><strong>本机</strong> 不上传图片</p>
+        </div>
+        <a class="link" href="#notes">使用细节 ›</a>
+      </div>
     </section>
 
     <section class="notes" id="notes" aria-label="使用细节">
-      <h2>需要时再看的细节。</h2>
-      <details>
-        <summary>怎么连上，权限留在哪</summary>
-        <p>用 HTTPS 打开控制台，接上 USB，点击“连接徽章”。浏览器权限选择必须由你自己触发。不需要 Python 服务、PWA 或本机助手。</p>
-        <p>串口权限绑定 origin，而不是项目路径。同一 <code>*.github.io</code> 主机名下的其他仓库页面可能同源，并看见已经授权的端口。只在信任的站点授权。需要隔开时，用单独的子域。</p>
-      </details>
-      <details>
-        <summary>图片怎么解码</summary>
-        <p>设备用 ESP32-S3 ROM 里的 TJpgDec 解码 JPEG。WebP 由浏览器转成 JPEG，设备不直接解 WebP。一次实测里，42 张自然照片的解码路径大约 228–284 毫秒，包含读文件、CRC 和 RGB 转换，会随图片和存储而变化，不是性能承诺。浏览器编码质量参数是 0.85。</p>
-        <p>切换可以是直接、淡变、水平推入，或成本较低的径向涟漪。涟漪用比较硬的边缘，换更低的渲染开销。</p>
-      </details>
-      <details>
-        <summary>睡眠和供电</summary>
-        <p>USB 或 VBUS（包括充电器）供电，或者电源状态还不知道时，睡眠只关闭显示和 IMU，USB 控制保持在线，可以点触屏唤醒。电池供电时，手动 SLEEP、电池闲置超时，以及熄屏后拔掉 USB 改由电池供电，都会在当前操作完成、手指松开、电源芯片准备好之后，请求 AXP2101 软件关机。这不是 ESP32 深度睡眠，也不靠 GPIO3 的 EXT0 唤醒。</p>
-        <p>关机后按住 POWER 大约两秒冷启动。电池闲置超时默认关闭。重启会清掉内存里的播放历史。已经保存的设置还在。实际耗电还没有测过。</p>
-      </details>
+      <div class="band-inner">
+        <h2>需要时再看的细节。</h2>
+        <details id="connect">
+          <summary>怎么连上，权限留在哪</summary>
+          <p>用 HTTPS 打开控制台，接上 USB，点击“连接徽章”。浏览器权限选择必须由你自己触发。不需要 Python 服务、PWA 或本机助手。</p>
+          <p>串口权限绑定 origin，而不是项目路径。同一 <code>*.github.io</code> 主机名下的其他仓库页面可能同源，并看见已经授权的端口。只在信任的站点授权。需要隔开时，用单独的子域。</p>
+        </details>
+        <details id="decode">
+          <summary>图片怎么解码</summary>
+          <p>设备用 ESP32-S3 ROM 里的 TJpgDec 解码 JPEG。WebP 由浏览器转成 JPEG，设备不直接解 WebP。一次实测里，42 张自然照片的解码路径大约 228–284 毫秒，包含读文件、CRC 和 RGB 转换，会随图片和存储而变化，不是性能承诺。浏览器编码质量参数是 0.85。</p>
+          <p>切换可以是直接、淡变、水平推入，或成本较低的径向涟漪。涟漪用比较硬的边缘，换更低的渲染开销。</p>
+        </details>
+        <details id="power">
+          <summary>睡眠和供电</summary>
+          <p>USB 或 VBUS（包括充电器）供电，或者电源状态还不知道时，睡眠只关闭显示和 IMU，USB 控制保持在线，可以点触屏唤醒。电池供电时，手动 SLEEP、电池闲置超时，以及熄屏后拔掉 USB 改由电池供电，都会在当前操作完成、手指松开、电源芯片准备好之后，请求 AXP2101 软件关机。这不是 ESP32 深度睡眠，也不靠 GPIO3 的 EXT0 唤醒。</p>
+          <p>关机后按住 POWER 大约两秒冷启动。电池闲置超时默认关闭。重启会清掉内存里的播放历史。已经保存的设置还在。实际耗电还没有测过。</p>
+        </details>
+      </div>
     </section>
   </main>
 
   <footer class="footer">
-    <a class="brand" href="#top">
-      <svg class="logo" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="11" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="16" cy="16" r="4.5" fill="currentColor"/></svg>
-      USB 图片徽章
-    </a>
-    <span>合成演示 · 不含设备照片</span>
-    <a href="https://github.com/ocean-sudo/electronic-badge">项目仓库</a>
-    <a href="console/">控制台</a>
+    <div class="band-inner">
+      <p class="footnotes">合成演示，不含设备照片。画面在浏览器里准备，不上传。</p>
+      <nav class="footer-nav" aria-label="页脚">
+        <div>
+          <p class="footer-label">使用</p>
+          <ul>
+            <li><a href="console/">控制台</a></li>
+            <li><a href="#specs">规格</a></li>
+            <li><a href="#connect">连接</a></li>
+            <li><a href="#decode">解码</a></li>
+            <li><a href="#power">供电</a></li>
+          </ul>
+        </div>
+        <div>
+          <p class="footer-label">项目</p>
+          <ul>
+            <li><a href="https://github.com/ocean-sudo/electronic-badge">仓库</a></li>
+          </ul>
+        </div>
+      </nav>
+      <p class="legal">USB 图片徽章</p>
+    </div>
   </footer>
 
   <script type="importmap">

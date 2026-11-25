@@ -6,6 +6,7 @@ const reduced = matchMedia("(prefers-reduced-motion: reduce)");
 const scrollDriven = CSS.supports("(animation-timeline: scroll()) and (animation-range: 0% 100%)");
 
 setupNav();
+setupScrollFrost();
 setupStage();
 
 function setupNav() {
@@ -44,14 +45,32 @@ function setupNav() {
   });
 }
 
+function setupScrollFrost() {
+  if (CSS.supports("container-type", "scroll-state")) return;
+  const sentinel = document.querySelector(".scroll-sentinel");
+  if (!sentinel) return;
+  const observer = new IntersectionObserver((entries) => {
+    for (const entry of entries) {
+      document.documentElement.classList.toggle("is-scrolled", !entry.isIntersecting);
+    }
+  });
+  observer.observe(sentinel);
+}
+
 function setupStage() {
   const stage = document.querySelector(".stage");
   const canvas = document.getElementById("badge-stage");
   const status = document.getElementById("stage-status");
   const toggle = document.getElementById("demo-toggle");
-  const story = document.querySelector(".story");
   const view = canvas.parentElement;
+  const frame = stage.querySelector(".stage-frame");
+  const pointerQuery = matchMedia("(pointer: fine) and (prefers-reduced-motion: no-preference)");
   let playing = !reduced.matches;
+  let shown = 0;
+  let tiltX = 0;
+  let tiltY = 0;
+  let targetTiltX = 0;
+  let targetTiltY = 0;
   toggle.textContent = playing ? "暂停画面" : "播放画面";
 
   toggle.addEventListener("click", () => {
@@ -59,27 +78,27 @@ function setupStage() {
     toggle.textContent = playing ? "暂停画面" : "播放画面";
   });
 
-  if (!scrollDriven) {
-    const update = () => {
-      if (reduced.matches) {
-        stage.style.setProperty("--orbit", "0");
-        return;
-      }
-      const rect = story.getBoundingClientRect();
-      const total = Math.max(story.offsetHeight - window.innerHeight, 1);
-      const passed = Math.min(Math.max(-rect.top, 0), total);
-      stage.style.setProperty("--orbit", (passed / total).toFixed(4));
-    };
-    document.addEventListener("scroll", update, { passive: true });
-    window.addEventListener("resize", update);
-    update();
-  }
+  frame.addEventListener("pointermove", (event) => {
+    if (!pointerQuery.matches) return;
+    if (event.pointerType !== "mouse" && event.pointerType !== "pen") return;
+    const rect = frame.getBoundingClientRect();
+    const nx = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    const ny = ((event.clientY - rect.top) / rect.height) * 2 - 1;
+    // Camera sits on +Z. +yaw turns the face toward a pointer on the right.
+    // +pitch brings +Y toward the camera, so a pointer above the product tips the top forward.
+    targetTiltY = nx * 0.07;
+    targetTiltX = -ny * 0.05;
+  });
+  frame.addEventListener("pointerleave", () => {
+    targetTiltX = 0;
+    targetTiltY = 0;
+  });
 
   let renderer;
   try {
     renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
   } catch (error) {
-    status.textContent = "这个浏览器没法显示三维模型，先用插画代替。";
+    showStatus(status, "这个浏览器没法显示三维模型，先用插画代替。");
     return;
   }
   renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
@@ -120,17 +139,19 @@ function setupStage() {
     material.roughness = 0.32;
     screen.material = material;
     const front = new THREE.Vector3(0, 0, 1).transformDirection(screen.matrixWorld);
-    if (front.z < 0.9) status.textContent = "模型朝向和屏幕法线不一致。";
+    if (front.z < 0.9) showStatus(status, "模型朝向和屏幕法线不一致。");
     view.classList.add("is-ready");
     view.querySelector(".stage-fallback").setAttribute("aria-hidden", "true");
-    status.textContent = "滚动页面，徽章会转过来。";
+    if (front.z >= 0.9) showStatus(status, "滚动页面，徽章会转过来。");
     window.__badge = {
       ready: true,
       frontZ: front.z,
+      shown: () => shown,
+      rotation: () => ({ x: rig.rotation.x, y: rig.rotation.y, z: rig.rotation.z }),
       setOrbit(value) { stage.style.setProperty("--orbit", String(value)); },
     };
   }, undefined, () => {
-    status.textContent = "模型没有载入，先显示插画。";
+    showStatus(status, "模型没有载入，先显示插画。");
   });
 
   let clock = 0;
@@ -150,11 +171,20 @@ function setupStage() {
     const dt = Math.min(0.05, (now - last) / 1000);
     last = now;
     if (playing) clock += dt;
-    const orbit = readOrbit(stage);
-    const pose = poseAt(reduced.matches ? 0 : orbit);
-    rig.rotation.set(pose.x, pose.y, 0);
-    const scrolled = orbit > 0.16;
-    const frame = playing && !scrolled ? autoFrame(clock) : frameForOrbit(orbit);
+    const target = reduced.matches ? 0 : readOrbit(stage);
+    const damping = reduced.matches ? 1 : 0.12;
+    shown += (target - shown) * damping;
+    if (Math.abs(target - shown) < 0.0008) shown = target;
+    const pose = poseAt(shown);
+    const tiltOn = pointerQuery.matches && shown < 0.08;
+    tiltX += ((tiltOn ? targetTiltX : 0) - tiltX) * 0.12;
+    tiltY += ((tiltOn ? targetTiltY : 0) - tiltY) * 0.12;
+    rig.rotation.set(pose.x + tiltX, pose.y + tiltY, 0);
+    if (scrollDriven && !reduced.matches) {
+      document.documentElement.classList.toggle("is-dark-beat", shown > 0.42 && shown < 0.68);
+    }
+    const scrolled = shown > 0.16;
+    const frame = playing && !scrolled ? autoFrame(clock) : frameForOrbit(shown);
     try {
       paintScreen(screenContext, frame);
       texture.needsUpdate = true;
@@ -171,6 +201,20 @@ function setupStage() {
     }
   });
   requestAnimationFrame(loop);
+
+  if (!(scrollDriven && !reduced.matches)) {
+    const screenBeat = document.getElementById("screen");
+    const observer = new IntersectionObserver((entries) => {
+      document.documentElement.classList.toggle("is-dark-beat", entries.some((entry) => entry.isIntersecting));
+    }, { threshold: 0.6 });
+    observer.observe(screenBeat);
+  }
+}
+
+function showStatus(status, text) {
+  status.textContent = text;
+  const failed = text.includes("没法") || text.includes("没有载入") || text.includes("不一致");
+  status.classList.toggle("is-quiet", !failed);
 }
 
 function readOrbit(stage) {
@@ -187,7 +231,7 @@ function autoFrame(clock) {
 }
 
 function frameForOrbit(orbit) {
-  const gates = [0.32, 0.62, 0.86];
+  const gates = [0.4, 0.66, 0.86];
   const blend = 0.06;
   if (orbit < gates[0]) return 0;
   if (orbit < gates[1]) return orbit < gates[0] + blend ? (orbit - gates[0]) / blend : 1;
@@ -199,9 +243,10 @@ function frameForOrbit(orbit) {
 // Camera stays on +Z. Negative yaw brings +X toward the camera.
 const POSES = [
   { p: 0, y: 0, x: 0 },
-  { p: 0.55, y: 0, x: 0 },
+  { p: 0.4, y: 0, x: 0 },
+  { p: 0.58, y: -0.12, x: 0 },
   { p: 0.7, y: -1.05, x: 0.06 },
-  { p: 0.82, y: -1.05, x: 0.06 },
+  { p: 0.84, y: -1.05, x: 0.06 },
   { p: 0.94, y: -0.16, x: -0.62 },
   { p: 1, y: -0.16, x: -0.62 },
 ];
