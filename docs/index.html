@@ -3,8 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#0c0b09">
-  <meta name="color-scheme" content="dark">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#f4efe6" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0c0b09" media="(prefers-color-scheme: dark)">
   <meta name="description" content="USB 图片徽章：ESP32-S3 圆形图片徽章固件与 Web Serial 控制台。">
   <title>USB 图片徽章｜浏览器直连，随身展示</title>
   <link rel="icon" href="assets/mark.svg" type="image/svg+xml">
@@ -15,7 +16,7 @@
   <div class="topbar-wrap">
     <header class="topbar">
       <a class="brand" href="#top">
-        <svg class="logo" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="11" fill="none" stroke="#e7c48a" stroke-width="1.6"/><circle cx="16" cy="16" r="4.5" fill="#e7c48a"/></svg>
+        <svg class="logo" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="11" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="16" cy="16" r="4.5" fill="currentColor"/></svg>
         USB 图片徽章
       </a>
       <nav aria-label="主导航">
@@ -23,7 +24,6 @@
         <a href="#console">控制台预览</a>
         <a href="#how">使用方式</a>
         <a href="#limits">实测边界</a>
-        <a href="#safe">安全部署</a>
         <a class="nav-cta" href="console/">打开控制台</a>
       </nav>
     </header>
@@ -140,26 +140,11 @@
       </div>
     </section>
 
-    <section class="section" id="safe">
-      <div class="safe">
-        <div>
-          <p class="eyebrow">安全地开始</p>
-          <h2>推荐 AI 辅助部署，<br>而非一键刷机。</h2>
-          <p>仓库提供可复制的提示词与手动步骤。先逐条审阅命令；已有设备升级仅写应用分区，保留文件系统和设备设置。</p>
-        </div>
-        <aside class="safe-card">
-          <p>串口选择器必须由用户点击触发</p>
-          <p>权限按 origin 保存，只授权信任的站点</p>
-          <p>旧 v1 图片需在升级前导出、备份并转换</p>
-          <a href="console/">打开 Web Serial 控制台</a>
-        </aside>
-      </div>
-    </section>
   </main>
 
   <footer class="footer">
     <a class="brand" href="#top">
-      <svg class="logo" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="11" fill="none" stroke="#e7c48a" stroke-width="1.6"/><circle cx="16" cy="16" r="4.5" fill="#e7c48a"/></svg>
+      <svg class="logo" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="11" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="16" cy="16" r="4.5" fill="currentColor"/></svg>
       USB 图片徽章
     </a>
     <span>合成演示素材 · 不含设备照片</span>
