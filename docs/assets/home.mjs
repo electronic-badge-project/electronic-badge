@@ -98,7 +98,7 @@ function setupStage() {
   try {
     renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
   } catch (error) {
-    showStatus(status, "这个浏览器没法显示三维模型，先用插画代替。");
+    showStatus(status, "这个浏览器没法显示三维模型，先显示演示图。");
     return;
   }
   renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
@@ -120,8 +120,35 @@ function setupStage() {
   const screenCanvas = document.createElement("canvas");
   screenCanvas.width = 512;
   screenCanvas.height = 512;
-  const screenContext = screenCanvas.getContext("2d");
+  const screenContext = screenCanvas.getContext("2d", { willReadFrequently: true });
   const texture = new THREE.CanvasTexture(screenCanvas);
+  const baked = [null, null, null, null];
+  window.__badgeBaked = baked;
+  let effect = { name: "place", dark: false, turns: 0 };
+  const firstPhoto = document.querySelector(".stage-fallback");
+  const bake = (image, index) => {
+    if (!image.naturalWidth) return;
+    const copy = document.createElement("canvas");
+    copy.width = 512;
+    copy.height = 512;
+    copy.getContext("2d").drawImage(image, 0, 0, 512, 512);
+    baked[index] = copy;
+  };
+  const watch = (image, index) => {
+    if (image.complete && image.naturalWidth) bake(image, index);
+    else image.addEventListener("load", () => bake(image, index), { once: true });
+  };
+  watch(firstPhoto, 0);
+  const loadRest = () => {
+    ["assets/demo/02.jpg", "assets/demo/03.jpg", "assets/demo/04.jpg"].forEach((src, index) => {
+      const image = new Image();
+      image.decoding = "async";
+      image.src = src;
+      watch(image, index + 1);
+    });
+  };
+  if (firstPhoto.complete) loadRest();
+  else firstPhoto.addEventListener("load", loadRest, { once: true });
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.flipY = false;
 
@@ -142,16 +169,21 @@ function setupStage() {
     if (front.z < 0.9) showStatus(status, "模型朝向和屏幕法线不一致。");
     view.classList.add("is-ready");
     view.querySelector(".stage-fallback").setAttribute("aria-hidden", "true");
-    if (front.z >= 0.9) showStatus(status, "滚动页面，徽章会转过来。");
+    if (front.z >= 0.9) showStatus(status, "演示图已经在圆屏上。");
     window.__badge = {
       ready: true,
       frontZ: front.z,
       shown: () => shown,
       rotation: () => ({ x: rig.rotation.x, y: rig.rotation.y, z: rig.rotation.z }),
       setOrbit(value) { stage.style.setProperty("--orbit", String(value)); },
+      effect: () => effect,
+      sample() {
+        const px = screenContext.getImageData(256, 256, 1, 1).data;
+        return [px[0], px[1], px[2]];
+      },
     };
   }, undefined, () => {
-    showStatus(status, "模型没有载入，先显示插画。");
+    showStatus(status, "模型没有载入，先显示演示图。");
   });
 
   let clock = 0;
@@ -175,21 +207,17 @@ function setupStage() {
     const damping = reduced.matches ? 1 : 0.12;
     shown += (target - shown) * damping;
     if (Math.abs(target - shown) < 0.0008) shown = target;
-    const pose = poseAt(shown);
     const tiltOn = pointerQuery.matches && shown < 0.08;
     tiltX += ((tiltOn ? targetTiltX : 0) - tiltX) * 0.12;
     tiltY += ((tiltOn ? targetTiltY : 0) - tiltY) * 0.12;
-    rig.rotation.set(pose.x + tiltX, pose.y + tiltY, 0);
-    if (scrollDriven && !reduced.matches) {
-      document.documentElement.classList.toggle("is-dark-beat", shown > 0.42 && shown < 0.68);
-    }
-    const scrolled = shown > 0.16;
-    const frame = playing && !scrolled ? autoFrame(clock) : frameForOrbit(shown);
+    // Screen normal is +Z and the camera sits on +Z. Keep yaw and pitch at the pointer tilt only.
+    rig.rotation.set(tiltX, tiltY, 0);
+    effect = effectAt(shown, playing ? clock : 0);
     try {
-      paintScreen(screenContext, frame);
+      paintScreen(screenContext, effect);
       texture.needsUpdate = true;
     } catch (error) {
-      window.__badgeError = `${error.message} frame=${frame}`;
+      window.__badgeError = `${error.message} effect=${effect.name}`;
     }
     renderer.render(scene, camera);
     if (!document.hidden) requestAnimationFrame(loop);
@@ -201,14 +229,6 @@ function setupStage() {
     }
   });
   requestAnimationFrame(loop);
-
-  if (!(scrollDriven && !reduced.matches)) {
-    const screenBeat = document.getElementById("screen");
-    const observer = new IntersectionObserver((entries) => {
-      document.documentElement.classList.toggle("is-dark-beat", entries.some((entry) => entry.isIntersecting));
-    }, { threshold: 0.6 });
-    observer.observe(screenBeat);
-  }
 }
 
 function showStatus(status, text) {
@@ -222,138 +242,124 @@ function readOrbit(stage) {
   return Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : 0;
 }
 
-function autoFrame(clock) {
-  const slot = 5.6;
-  const phase = (clock % (slot * 4)) / slot;
-  const index = Math.floor(phase);
-  const local = phase - index;
-  return index + (local > 0.8 ? (local - 0.8) / 0.2 : 0);
+// Firmware ease: smoothstep on 0..255, rounded. picture_animation.h.
+function easeUnit(t) {
+  const x = Math.min(255, Math.max(0, t * 255));
+  return ((x * x * (765 - 2 * x) + 32512) / 65025) / 255;
 }
 
-function frameForOrbit(orbit) {
-  const gates = [0.4, 0.66, 0.86];
-  const blend = 0.06;
-  if (orbit < gates[0]) return 0;
-  if (orbit < gates[1]) return orbit < gates[0] + blend ? (orbit - gates[0]) / blend : 1;
-  if (orbit < gates[2]) return orbit < gates[1] + blend ? 1 + (orbit - gates[1]) / blend : 2;
-  return orbit < gates[2] + blend ? 2 + (orbit - gates[2]) / blend : 3;
+// Fade is a brightness dip, not a crossfade. 130ms down, swap at black, 170ms up.
+function fadeBrightness(t) {
+  const out = 130 / 300;
+  if (t <= out) return 1 - easeUnit(t / out);
+  return easeUnit((t - out) / (1 - out));
 }
 
-// Screen normals point +Z, USB-C sits at −Y, side keys sit at +X.
-// Camera stays on +Z. Negative yaw brings +X toward the camera.
-const POSES = [
-  { p: 0, y: 0, x: 0 },
-  { p: 0.4, y: 0, x: 0 },
-  { p: 0.58, y: -0.12, x: 0 },
-  { p: 0.7, y: -1.05, x: 0.06 },
-  { p: 0.84, y: -1.05, x: 0.06 },
-  { p: 0.94, y: -0.16, x: -0.62 },
-  { p: 1, y: -0.16, x: -0.62 },
-];
-
-function poseAt(progress) {
-  let from = POSES[0];
-  let to = POSES[POSES.length - 1];
-  for (let index = 0; index < POSES.length - 1; index += 1) {
-    if (progress >= POSES[index].p && progress <= POSES[index + 1].p) {
-      from = POSES[index];
-      to = POSES[index + 1];
-      break;
-    }
+function effectAt(orbit, clock) {
+  // The device turns once in about 24s. The hero demo is faster so the motion, and its pause button, are visible.
+  const heroTurn = clock > 0 && orbit < 0.12 ? (clock % 10) / 10 : 0;
+  const hold = (name, index, turns = 0) => ({ name, index, turns, brightness: 1, dark: false, mode: "still" });
+  if (orbit < 0.28) return hold("place", 0, heroTurn);
+  if (orbit < 0.4) {
+    const t = Math.min(1, (orbit - 0.28) / 0.12);
+    const brightness = fadeBrightness(t);
+    return {
+      name: "fade",
+      index: t < 130 / 300 ? 0 : 1,
+      next: 1,
+      t,
+      brightness,
+      dark: brightness < 0.28,
+      mode: "fade",
+      turns: 0,
+    };
   }
-  const span = to.p - from.p || 1;
-  const t = (progress - from.p) / span;
-  const eased = t * t * (3 - 2 * t);
-  return {
-    y: from.y + (to.y - from.y) * eased,
-    x: from.x + (to.x - from.x) * eased,
-  };
+  if (orbit < 0.52) return hold("fade", 1);
+  if (orbit < 0.68) {
+    const t = Math.min(1, (orbit - 0.52) / 0.16);
+    return { name: "slide", index: 1, next: 2, offset: easeUnit(t) * 512, dark: false, mode: "slide", brightness: 1, turns: 0 };
+  }
+  if (orbit < 0.7) return hold("slide", 2);
+  if (orbit < 0.86) {
+    const t = Math.min(1, (orbit - 0.7) / 0.16);
+    return { name: "ripple", index: 2, next: 3, radius: t * 512, dark: false, mode: "ripple", brightness: 1, turns: 0 };
+  }
+  if (orbit < 0.88) return hold("ripple", 3);
+  return hold("spin", 3, Math.min(1, (orbit - 0.88) / 0.12) * 0.2);
 }
 
-function paintScreen(context, frame) {
-  const whole = Number.isFinite(frame) ? Math.floor(frame) : 0;
-  const index = ((whole % 4) + 4) % 4;
-  const next = (index + 1) % 4;
-  const mix = Number.isFinite(frame) ? frame - whole : 0;
-  context.clearRect(0, 0, 512, 512);
+function paintScreen(context, effect) {
   context.globalAlpha = 1;
-  [drawPhoto, drawCrop, drawKeys, drawPort][index](context);
-  if (mix > 0.001) {
-    context.globalAlpha = mix;
-    [drawPhoto, drawCrop, drawKeys, drawPort][next](context);
-    context.globalAlpha = 1;
+  context.clearRect(0, 0, 512, 512);
+  context.fillStyle = "#000";
+  context.fillRect(0, 0, 512, 512);
+  const current = bakedImage(effect.index);
+  const next = bakedImage(effect.next);
+  if (effect.mode === "fade") {
+    drawDim(context, effect.t < 130 / 300 ? current : next, effect.brightness);
+    return;
+  }
+  if (effect.mode === "slide") {
+    drawSlide(context, current, next, effect.offset);
+    return;
+  }
+  if (effect.mode === "ripple") {
+    drawRipple(context, current, next, effect.radius);
+    return;
+  }
+  if (effect.turns) drawRotated(context, current, effect.turns);
+  else if (current) context.drawImage(current, 0, 0);
+}
+
+function bakedImage(index) {
+  const frames = window.__badgeBaked;
+  return frames && Number.isInteger(index) ? frames[index] : null;
+}
+
+function drawRotated(context, image, turns) {
+  if (!image) return;
+  context.save();
+  context.translate(256, 256);
+  context.rotate(turns * Math.PI * 2);
+  context.drawImage(image, -256, -256);
+  context.restore();
+}
+
+function drawDim(context, image, brightness) {
+  if (!image) return;
+  context.drawImage(image, 0, 0);
+  if (brightness < 0.999) {
+    context.fillStyle = `rgba(0, 0, 0, ${1 - brightness})`;
+    context.fillRect(0, 0, 512, 512);
   }
 }
 
-function drawPhoto(context) {
-  const sky = context.createLinearGradient(0, 0, 0, 512);
-  sky.addColorStop(0, "#241a38");
-  sky.addColorStop(0.42, "#c46a4a");
-  sky.addColorStop(0.58, "#e7a15a");
-  sky.addColorStop(1, "#1c3d46");
-  context.fillStyle = sky;
-  context.fillRect(0, 0, 512, 512);
-  context.fillStyle = "#fff6df";
-  context.beginPath();
-  context.arc(300, 210, 42, 0, Math.PI * 2);
-  context.fill();
-  context.fillStyle = "#14343c";
-  context.beginPath();
-  context.moveTo(0, 300);
-  context.quadraticCurveTo(180, 250, 320, 320);
-  context.quadraticCurveTo(420, 360, 512, 300);
-  context.lineTo(512, 512);
-  context.lineTo(0, 512);
-  context.fill();
-  context.fillStyle = "#0d242c";
-  context.beginPath();
-  context.moveTo(0, 380);
-  context.quadraticCurveTo(200, 340, 512, 410);
-  context.lineTo(512, 512);
-  context.lineTo(0, 512);
-  context.fill();
+function drawSlide(context, oldImage, newImage, offset) {
+  const shift = Math.max(0, Math.min(512, Math.round(offset)));
+  const seam = 512 - shift;
+  if (oldImage && seam > 0) context.drawImage(oldImage, shift, 0, seam, 512, 0, 0, seam, 512);
+  if (newImage && shift > 0) context.drawImage(newImage, 0, 0, shift, 512, seam, 0, shift, 512);
 }
 
-function drawCrop(context) {
-  drawPhoto(context);
-  context.strokeStyle = "#7eb6ff";
-  context.lineWidth = 6;
-  context.strokeRect(146, 146, 220, 220);
-  context.fillStyle = "rgba(8, 16, 28, 0.28)";
-  context.fillRect(0, 0, 512, 146);
-  context.fillRect(0, 366, 512, 146);
-  context.fillRect(0, 146, 146, 220);
-  context.fillRect(366, 146, 146, 220);
-}
-
-function drawKeys(context) {
-  context.fillStyle = "#101114";
-  context.fillRect(0, 0, 512, 512);
-  context.strokeStyle = "#e7c48a";
-  context.lineWidth = 8;
+function drawRipple(context, oldImage, newImage, radius) {
+  if (oldImage) context.drawImage(oldImage, 0, 0);
+  if (!newImage || radius <= 0) return;
+  context.save();
   context.beginPath();
-  context.arc(256, 256, 150, 0, Math.PI * 2);
-  context.stroke();
-  context.fillStyle = "#f4efe6";
-  context.font = "600 42px 'Noto Sans CJK SC', 'Noto Sans SC', sans-serif";
-  context.textAlign = "center";
-  context.fillText("短按菜单", 256, 246);
-  context.fillStyle = "#c9c0b2";
-  context.font = "28px 'Noto Sans CJK SC', 'Noto Sans SC', sans-serif";
-  context.fillText("长按睡眠", 256, 296);
-}
-
-function drawPort(context) {
-  context.fillStyle = "#101114";
-  context.fillRect(0, 0, 512, 512);
-  context.strokeStyle = "#9fd0c4";
-  context.lineWidth = 14;
-  context.lineCap = "round";
+  context.arc(256, 256, radius, 0, Math.PI * 2);
+  context.clip();
+  context.drawImage(newImage, 0, 0);
+  context.restore();
+  const band = 6 * (512 / 466);
+  if (radius <= band || radius >= 500) return;
   context.beginPath();
-  context.arc(256, 256, 150, -Math.PI / 2, Math.PI * 0.85);
-  context.stroke();
-  context.fillStyle = "#f4efe6";
-  context.font = "600 48px 'Noto Sans CJK SC', 'Noto Sans SC', sans-serif";
-  context.textAlign = "center";
-  context.fillText("USB", 256, 268);
+  context.arc(256, 256, radius, 0, Math.PI * 2);
+  context.arc(256, 256, radius - band, 0, Math.PI * 2, true);
+  context.fillStyle = "rgba(255, 255, 255, 0.25)";
+  context.fill("evenodd");
+  context.beginPath();
+  context.arc(256, 256, radius + band, 0, Math.PI * 2);
+  context.arc(256, 256, radius, 0, Math.PI * 2, true);
+  context.fillStyle = "rgba(0, 0, 0, 0.25)";
+  context.fill("evenodd");
 }

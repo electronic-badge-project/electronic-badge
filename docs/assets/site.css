@@ -379,15 +379,17 @@ html.is-dark-beat .site-header {
   inset: 0;
 }
 .stage-view canvas,
+.stage-fallback-picture,
 .stage-fallback {
   position: absolute;
   inset: 0;
   inline-size: 100%;
   block-size: 100%;
-  object-fit: contain;
+  object-fit: cover;
 }
-.stage-fallback { z-index: 1; }
-.stage-view.is-ready .stage-fallback { visibility: hidden; }
+.stage-fallback-picture { z-index: 1; }
+.stage-fallback { border-radius: 50%; }
+.stage-view.is-ready .stage-fallback-picture { visibility: hidden; }
 .stage-shadow {
   position: absolute;
   z-index: 0;
@@ -438,6 +440,29 @@ html.is-dark-beat .site-header {
   text-align: center;
   pointer-events: none;
 }
+.demo-credit {
+  position: relative;
+  z-index: 4;
+  margin: 0.35rem 1.25rem 0;
+  color: var(--secondary);
+  font-size: 0.75rem;
+  line-height: 1.4;
+  text-align: center;
+}
+html.is-dark-beat .demo-credit { color: #a1a1a6; }
+.beat-still {
+  display: block;
+  inline-size: min(16rem, 70vw);
+  block-size: auto;
+  height: auto;
+  aspect-ratio: 1;
+  margin-inline: auto;
+  margin-block-start: 1.5rem;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.beat-still.is-turned { transform: rotate(40deg); }
+
 .overlay .cap {
   position: absolute;
   inset-inline: 0;
@@ -472,12 +497,6 @@ html.is-dark-beat .site-header {
   color: var(--secondary);
   font-size: 1.1875rem;
 }
-.beat-screen {
-  background: #000;
-  color: #f5f5f7;
-}
-.beat-screen p { color: rgb(245 245 247 / 0.78); }
-
 .band {
   padding-block: clamp(4.5rem, 10vw, 7.5rem);
   padding-inline: max(1.25rem, env(safe-area-inset-inline));
@@ -679,7 +698,8 @@ html.is-dark-beat .site-header {
       animation-timeline: --film;
       animation-range: contain 0% contain 100%;
     }
-    .pause {
+    .pause,
+    .demo-credit {
       animation: hero-fade linear both;
       animation-timeline: --film;
       animation-range: contain 0% contain 100%;
@@ -692,9 +712,13 @@ html.is-dark-beat .site-header {
       background: transparent;
       color: inherit;
     }
-    .beat-screen { background: transparent; color: inherit; }
-    .beat-screen p { color: inherit; }
-    .beat :is(h2, p) {
+    .demo-credit {
+      position: absolute;
+      inset-inline: 1rem;
+      inset-block-end: 0.6rem;
+      margin: 0;
+    }
+    .beat :is(h2, p, .beat-still) {
       position: absolute;
       width: 1px;
       height: 1px;
@@ -711,21 +735,21 @@ html.is-dark-beat .site-header {
       animation-range: contain 0% contain 100%;
     }
     .hero-copy,
-    .veil,
-    .cap-look,
-    .cap-screen,
-    .cap-side,
-    .cap-port {
+    .cap-place,
+    .cap-fade,
+    .cap-slide,
+    .cap-ripple,
+    .cap-spin {
       animation: linear both;
       animation-timeline: --film;
       animation-range: contain 0% contain 100%;
     }
     .hero-copy { animation-name: hero-fade; }
-    .veil { animation-name: veil-fade; }
-    .cap-look { animation-name: cap-look; }
-    .cap-screen { animation-name: cap-screen; }
-    .cap-side { animation-name: cap-side; }
-    .cap-port { animation-name: cap-port; }
+    .cap-place { animation-name: cap-place; }
+    .cap-fade { animation-name: cap-fade; }
+    .cap-slide { animation-name: cap-slide; }
+    .cap-ripple { animation-name: cap-ripple; }
+    .cap-spin { animation-name: cap-spin; }
   }
 }
 
@@ -745,28 +769,28 @@ html.is-dark-beat .site-header {
   0%, 12% { opacity: 1; visibility: visible; }
   20%, 100% { opacity: 0; visibility: hidden; }
 }
-@keyframes veil-fade {
+@keyframes cap-place {
+  0%, 14% { opacity: 0; }
+  18%, 26% { opacity: 1; }
+  32%, 100% { opacity: 0; }
+}
+@keyframes cap-fade {
   0%, 34% { opacity: 0; }
-  46%, 60% { opacity: 1; }
+  38%, 48% { opacity: 1; }
+  54%, 100% { opacity: 0; }
+}
+@keyframes cap-slide {
+  0%, 52% { opacity: 0; }
+  56%, 66% { opacity: 1; }
   72%, 100% { opacity: 0; }
 }
-@keyframes cap-look {
-  0%, 16% { opacity: 0; }
-  24%, 36% { opacity: 1; }
-  44%, 100% { opacity: 0; }
-}
-@keyframes cap-screen {
-  0%, 40% { opacity: 0; color: #f5f5f7; }
-  48%, 58% { opacity: 1; color: #f5f5f7; }
-  66%, 100% { opacity: 0; color: #f5f5f7; }
-}
-@keyframes cap-side {
-  0%, 64% { opacity: 0; }
-  72%, 82% { opacity: 1; }
+@keyframes cap-ripple {
+  0%, 72% { opacity: 0; }
+  76%, 84% { opacity: 1; }
   90%, 100% { opacity: 0; }
 }
-@keyframes cap-port {
-  0%, 86% { opacity: 0; }
+@keyframes cap-spin {
+  0%, 90% { opacity: 0; }
   94%, 100% { opacity: 1; }
 }
 

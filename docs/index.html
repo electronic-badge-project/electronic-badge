@@ -7,7 +7,7 @@
   <meta name="color-scheme" content="light dark">
   <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
-  <meta name="description" content="USB 图片徽章：一块圆形屏幕，在浏览器里裁好画面，再用 Web Serial 直接送到设备上。">
+  <meta name="description" content="USB 图片徽章把一张图放进圆屏。换图有黑场淡变、水平推入和径向涟漪，放着则会慢慢转动。">
   <title>USB 图片徽章</title>
   <link rel="icon" href="assets/mark.svg" type="image/svg+xml">
   <link rel="stylesheet" href="assets/site.css">
@@ -26,11 +26,11 @@
           <span>菜单</span>
         </button>
         <ul id="site-menu" class="site-menu" popover="auto">
-          <li><a href="#look">外观</a></li>
-          <li><a href="#screen">画面</a></li>
-          <li><a href="#side">按键</a></li>
-          <li><a href="#port">接口</a></li>
-          <li><a href="#specs">规格</a></li>
+          <li><a href="#place">放图</a></li>
+          <li><a href="#fade">黑场</a></li>
+          <li><a href="#slide">推入</a></li>
+          <li><a href="#ripple">涟漪</a></li>
+          <li><a href="#spin">转动</a></li>
         </ul>
       </nav>
       <a class="link nav-link" href="console/">打开控制台 ›</a>
@@ -43,74 +43,87 @@
         <div class="veil" aria-hidden="true"></div>
         <div class="hero-copy">
           <h1>USB 图片徽章</h1>
-          <p class="tagline">让喜欢的画面，成为随身徽章。</p>
+          <p class="tagline">一张图放进圆屏。换法，和放着怎么动，都在这块屏上。</p>
           <div class="hero-actions">
             <a class="pill" href="console/">打开控制台</a>
-            <a class="link" href="#look">了解更多 ›</a>
+            <a class="link" href="#place">看换图 ›</a>
           </div>
         </div>
         <div class="stage">
           <div class="stage-frame">
             <div class="stage-shadow" aria-hidden="true"></div>
             <div class="stage-view">
-              <canvas id="badge-stage" aria-label="USB 图片徽章的三维模型"></canvas>
-              <img class="stage-fallback" src="assets/showcase.svg" alt="圆形屏幕上的合成风景。三维模型未能载入时显示这张图。" width="466" height="466">
+              <canvas id="badge-stage" aria-label="圆形屏幕上正在演示换图。图来自明日方舟：终末地。"></canvas>
+              <picture class="stage-fallback-picture">
+                <source srcset="assets/demo/01.webp" type="image/webp">
+                <img class="stage-fallback" src="assets/demo/01.jpg" alt="圆屏上的演示图：明日方舟终末地的角色肖像。三维模型未能载入时仍显示这张图。" width="1024" height="1024" fetchpriority="high">
+              </picture>
             </div>
             <button type="button" id="demo-toggle" class="pause">播放画面</button>
           </div>
-          <p id="stage-status" class="status is-quiet" role="status">正在准备产品模型。</p>
+          <p id="stage-status" class="status is-quiet" role="status">正在把演示图放到圆屏上。</p>
         </div>
+        <p class="demo-credit">演示图来自《明日方舟：终末地》，© HYPERGRYPH / GRYPHLINE</p>
         <div class="overlay" aria-hidden="true">
-          <p class="cap cap-look">正面，是一整块圆屏。</p>
-          <p class="cap cap-screen">画面，就换在这块屏上。</p>
-          <p class="cap cap-side">右侧两颗按键。</p>
-          <p class="cap cap-port">底部，USB-C。</p>
+          <p class="cap cap-place">一张图，就在圆屏上。</p>
+          <p class="cap cap-fade">先黑下去，再亮起来。</p>
+          <p class="cap cap-slide">从右边推进来。</p>
+          <p class="cap cap-ripple">从圆心扩开。</p>
+          <p class="cap cap-spin">放着，它也会转。</p>
         </div>
       </div>
-      <article class="beat" id="look">
-        <h2>正面，是一整块圆屏。</h2>
-        <p>铝壳包着玻璃边。继续往下，模型会转到侧面，再让你看见底部的接口。</p>
+      <article class="beat" id="place">
+        <h2>先放上一张图。</h2>
+        <p>圆屏里是一张《明日方舟：终末地》的宣传图。裁成圆之后，就停在这块屏上。往下看的是换图，每一段一种。</p>
+        <img class="beat-still" src="assets/demo/01.jpg" alt="圆屏上的第一张演示图，是一张角色肖像。" width="1024" height="1024" loading="lazy">
       </article>
-      <article class="beat beat-screen" id="screen">
-        <h2>画面，就换在这块屏上。</h2>
-        <p>裁切、轮播和切换都发生在圆里。现在播放的是演示画面，不是从设备读回来的照片。</p>
+      <article class="beat" id="fade">
+        <h2>黑场淡变。</h2>
+        <p>亮度先落到黑，图在黑里换掉，再亮起来。两张图不会叠在一起。暗下去大约 130 毫秒，亮回来大约 170 毫秒。</p>
+        <img class="beat-still" src="assets/demo/02.jpg" alt="黑场之后亮起的第二张演示图。" width="1024" height="1024" loading="lazy">
       </article>
-      <article class="beat" id="side">
-        <h2>右侧两颗按键。</h2>
-        <p>短按 BOOT 开合菜单，长按约一秒进入睡眠。另一颗是电源键。</p>
+      <article class="beat" id="slide">
+        <h2>水平推入。</h2>
+        <p>旧图往左走，新图从右边进来，中间是一条硬边。整段大约 300 毫秒。</p>
+        <img class="beat-still" src="assets/demo/03.jpg" alt="从右侧推入后留下的第三张演示图。" width="1024" height="1024" loading="lazy">
       </article>
-      <article class="beat" id="port">
-        <h2>底部，USB-C。</h2>
-        <p>插上线，在桌面浏览器里点连接。串口选择器由浏览器自己弹出，页面不把图片传到云端。</p>
+      <article class="beat" id="ripple">
+        <h2>径向涟漪。</h2>
+        <p>新图从圆心扩开。边是硬的，里侧略亮，外侧略暗。大约 400 毫秒。</p>
+        <img class="beat-still" src="assets/demo/04.jpg" alt="从圆心扩开后留下的第四张演示图。" width="1024" height="1024" loading="lazy">
+      </article>
+      <article class="beat" id="spin">
+        <h2>放着，也会转。</h2>
+        <p>默认是顺时针。设备上大约 24 秒一圈，页面开头转得更快，方便看清，也可以暂停。放着时还可以关掉运动，或者只挪一两个像素。滚过这一段，画面会转过一个角度。</p>
+        <img class="beat-still is-turned" src="assets/demo/04.jpg" alt="第四张演示图顺时针转过一个角度后的样子。" width="1024" height="1024" loading="lazy">
       </article>
     </section>
 
     <section class="band band-gray" aria-labelledby="highlights-title">
       <div class="band-inner">
-        <h2 id="highlights-title">记在这几件事上。</h2>
+        <h2 id="highlights-title">换图就这几种。</h2>
         <div class="bento">
           <article>
-            <p class="stat">466</p>
-            <h3>圆形屏幕</h3>
-            <p>466 × 466 的 JPEG。裁切在浏览器里完成。</p>
+            <h3>黑场淡变</h3>
+            <p>亮度先收到黑，图在黑里换掉，再亮起来。暗下去大约 130 毫秒，亮回来大约 170 毫秒。设备上的默认换法就是这一种。</p>
           </article>
           <article>
-            <h3>Web Serial</h3>
-            <p>115200 baud。串口选择器由你自己点开。</p>
+            <h3>水平推入</h3>
+            <p>旧图往左，新图从右边进来。大约 300 毫秒，接缝是硬的。</p>
           </article>
           <article>
-            <h3>不上传</h3>
-            <p>没有后台，也没有本机助手。图片留在这台电脑上。</p>
+            <h3>径向涟漪</h3>
+            <p>从圆心扩开。大约 400 毫秒。里侧略亮，外侧略暗，边不发虚。</p>
           </article>
         </div>
-        <p class="fine">桌面 Chromium，或 Firefox 151+。硬件是 ESP32-S3-Touch-AMOLED-1.75C。</p>
+        <p class="fine">也可以直接切过去。放着的时候可以关掉运动、每 7.5 秒挪一两个像素、顺时针转一圈约 24 秒，或者跟着设备的朝向。演示图来自《明日方舟：终末地》宣传图，© HYPERGRYPH / GRYPHLINE，不是这个项目的素材。</p>
       </div>
     </section>
 
     <section class="band" id="console">
       <div class="band-inner band-center">
-        <h2>控制台是用来做事的。</h2>
-        <p>裁切、传图、亮度、轮播和固件都在那一页。点连接之后，才由你选择串口。</p>
+        <h2>自己的图，在控制台里裁。</h2>
+        <p>裁成圆、传上去、改换法和转动，都在那一页。点连接之后，才由你选择串口。</p>
         <a class="pill" href="console/">打开控制台</a>
         <figure class="shot">
           <picture>
@@ -118,18 +131,6 @@
             <img src="assets/console-desktop.webp" alt="网页控制台的裁切界面。截图时未连接徽章，预览图为合成素材。" width="1440" height="900" loading="lazy">
           </picture>
         </figure>
-      </div>
-    </section>
-
-    <section class="band band-gray" id="specs" aria-labelledby="specs-title">
-      <div class="band-inner">
-        <h2 id="specs-title">规格。</h2>
-        <div class="figures">
-          <p><strong>466×466</strong> 圆形 JPEG</p>
-          <p><strong>115200</strong> Web Serial</p>
-          <p><strong>本机</strong> 不上传图片</p>
-        </div>
-        <a class="link" href="#notes">使用细节 ›</a>
       </div>
     </section>
 
@@ -157,13 +158,14 @@
 
   <footer class="footer">
     <div class="band-inner">
-      <p class="footnotes">合成演示，不含设备照片。画面在浏览器里准备，不上传。</p>
+      <p class="footnotes">演示图来自《明日方舟：终末地》宣传图，© HYPERGRYPH / GRYPHLINE，只用来看换图，不是本项目的素材。画面在浏览器里准备，不上传。</p>
       <nav class="footer-nav" aria-label="页脚">
         <div>
           <p class="footer-label">使用</p>
           <ul>
             <li><a href="console/">控制台</a></li>
-            <li><a href="#specs">规格</a></li>
+            <li><a href="#place">放图</a></li>
+            <li><a href="#fade">黑场</a></li>
             <li><a href="#connect">连接</a></li>
             <li><a href="#decode">解码</a></li>
             <li><a href="#power">供电</a></li>
