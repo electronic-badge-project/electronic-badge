@@ -11,10 +11,12 @@
 - `docs/assets/`：样式、原创合成插画及离线界面截图。
 - `.github/workflows/pages.yml`：固定官方 Actions 提交版本，发布 `docs/` 静态内容。
 
-展示页面及工作流直接取自已审查的公开源码提交 [`b83c29882165152193028fdbec92a3e690c26e5e`](https://github.com/ocean-sudo/electronic-badge/tree/b83c29882165152193028fdbec92a3e690c26e5e)。
+展示页面最初取自已审查的公开源码提交 [`b83c29882165152193028fdbec92a3e690c26e5e`](https://github.com/ocean-sudo/electronic-badge/tree/b83c29882165152193028fdbec92a3e690c26e5e)。
 
 ## 发布与边界
 
 组织仓库采用 GitHub Free 的公开仓库与原生 GitHub Pages，不设置自定义域名或 `CNAME`。在仓库的 **Settings → Pages** 中选择 **GitHub Actions**，由工作流发布 `main` 分支中的 `docs/`。
+
+Pages 工作流从固件仓库的公开 `/releases/latest` 解析一次稳定标签，再从该标签下载 `firmware.bin`、`SHA256SUMS` 和 `BUILD-INFO.txt`。三个附件都必须来自同一版，且通过大小限制和固件 SHA-256 校验后才发布。不需要配置 Actions secret，也不需要在固件发版时修改工作流。
 
 页面由 GitHub Pages 静态托管。可在支持 Web Serial 的浏览器中打开 [`docs/console/`](docs/console/) 控制台，由浏览器在用户本机直接连接 USB 徽章；设备连接与数据传输不经过云端中继。
