@@ -188,7 +188,8 @@ a { color: inherit; }
   min-block-size: 3rem;
   max-inline-size: 64rem;
   margin-inline: auto;
-  padding-inline: max(1.25rem, env(safe-area-inset-inline));
+  padding-inline-start: max(1.25rem, env(safe-area-inset-left, 0px));
+  padding-inline-end: max(1.25rem, env(safe-area-inset-right, 0px));
 }
 .header-inner > * { flex-shrink: 0; white-space: nowrap; }
 
@@ -398,8 +399,9 @@ html.is-dark-beat .site-header .nav-cta:hover { background: #409cff; }
   align-items: center;
   min-block-size: 100dvh;
   padding-block-start: calc(var(--header-block, 3rem) + clamp(1.25rem, 3.5dvh, 2.75rem));
-  padding-block-end: max(1.25rem, env(safe-area-inset-bottom));
-  padding-inline: max(1.25rem, env(safe-area-inset-inline));
+  padding-block-end: max(1.25rem, env(safe-area-inset-bottom, 0px));
+  padding-inline-start: max(1.25rem, env(safe-area-inset-left, 0px));
+  padding-inline-end: max(1.25rem, env(safe-area-inset-right, 0px));
   background: var(--bg);
 }
 
@@ -617,7 +619,8 @@ html.is-dark-beat .site-header .nav-cta:hover { background: #409cff; }
 .beats { background: var(--bg); }
 .beat {
   padding-block: clamp(4rem, 10vw, 6.5rem);
-  padding-inline: max(1.25rem, env(safe-area-inset-inline));
+  padding-inline-start: max(1.25rem, env(safe-area-inset-left, 0px));
+  padding-inline-end: max(1.25rem, env(safe-area-inset-right, 0px));
   text-align: center;
   border-block-start: 1px solid var(--divider);
 }
@@ -685,7 +688,8 @@ html.is-dark-beat .site-header .nav-cta:hover { background: #409cff; }
     grid-template-rows: 1fr;
     grid-template-columns: 1fr;
     padding-block: 0;
-    padding-inline: max(1.25rem, env(safe-area-inset-inline));
+    padding-inline-start: max(1.25rem, env(safe-area-inset-left, 0px));
+    padding-inline-end: max(1.25rem, env(safe-area-inset-right, 0px));
   }
 
   html.is-cinema-ready .hero-copy,
@@ -814,7 +818,7 @@ html.is-dark-beat .site-header .nav-cta:hover { background: #409cff; }
 
   html.is-cinema-ready .scene-foot {
     align-self: end;
-    padding-block-end: max(0.85rem, env(safe-area-inset-bottom));
+    padding-block-end: max(0.85rem, env(safe-area-inset-bottom, 0px));
     gap: 0.5rem;
   }
 
@@ -945,7 +949,8 @@ html.is-dark-beat .site-header .nav-cta:hover { background: #409cff; }
 .band,
 .notes {
   padding-block: clamp(4.75rem, 10vw, 8rem);
-  padding-inline: max(1.25rem, env(safe-area-inset-inline));
+  padding-inline-start: max(1.25rem, env(safe-area-inset-left, 0px));
+  padding-inline-end: max(1.25rem, env(safe-area-inset-right, 0px));
   content-visibility: auto;
   contain-intrinsic-size: auto none auto 720px;
 }
@@ -1601,7 +1606,8 @@ html.is-dark-beat .site-header .nav-cta:hover { background: #409cff; }
 /* ── Classic Apple Fat Footer ── */
 .footer {
   padding-block: 2rem 2.5rem;
-  padding-inline: max(1.25rem, env(safe-area-inset-inline));
+  padding-inline-start: max(1.25rem, env(safe-area-inset-left, 0px));
+  padding-inline-end: max(1.25rem, env(safe-area-inset-right, 0px));
 }
 
 .footnotes {
