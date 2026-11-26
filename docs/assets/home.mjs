@@ -136,6 +136,8 @@ function setupStage() {
   let targetTiltX = 0;
   let targetTiltY = 0;
   let hoverActive = false;
+  let lastClientX = -9999;
+  let lastClientY = -9999;
   let ptrNx = 0;
   let ptrNy = 0;
   let lightX = 0;
@@ -234,9 +236,25 @@ function setupStage() {
     scrollToBeat(beatIndex);
   });
 
+  const syncHoverFromCursor = () => {
+    if (isDragging || !hoverActive) return;
+    const rect = frame.getBoundingClientRect();
+    const inside =
+      lastClientX >= rect.left &&
+      lastClientX <= rect.right &&
+      lastClientY >= rect.top &&
+      lastClientY <= rect.bottom;
+    if (!inside) {
+      hoverActive = false;
+      targetTiltX = 0;
+      targetTiltY = 0;
+    }
+  };
+
   window.addEventListener(
     "scroll",
     () => {
+      syncHoverFromCursor();
       if (manualOverride !== null) return;
       const nextProgress = clamp01((window.scrollY - filmStart) / filmSpan);
       if (Math.abs(nextProgress - lastScrollTarget) > 0.0004) {
@@ -249,11 +267,21 @@ function setupStage() {
     { passive: true }
   );
 
+  window.addEventListener("blur", () => {
+    if (!isDragging) {
+      hoverActive = false;
+      targetTiltX = 0;
+      targetTiltY = 0;
+    }
+  });
+
   window.addEventListener("resize", measureFilm, { passive: true });
   reduced.addEventListener("change", syncCinemaMode);
   shortViewport.addEventListener("change", syncCinemaMode);
 
   const updatePointerCoords = (event) => {
+    lastClientX = event.clientX;
+    lastClientY = event.clientY;
     const rect = frame.getBoundingClientRect();
     const w = Math.max(rect.width, 1);
     const h = Math.max(rect.height, 1);
@@ -348,7 +376,13 @@ function setupStage() {
     dragPointerId = null;
     dragMode = null;
     frame.classList.remove("is-dragging");
-    if (event.pointerType === "touch") hoverActive = false;
+    if (event.pointerType === "touch") {
+      hoverActive = false;
+    } else {
+      lastClientX = event.clientX;
+      lastClientY = event.clientY;
+      syncHoverFromCursor();
+    }
     ensureLoop();
   };
 
@@ -374,7 +408,7 @@ function setupStage() {
   renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.08;
+  renderer.toneMappingExposure = 0.96;
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(30, 1, 0.01, 10);
@@ -384,23 +418,24 @@ function setupStage() {
 
   const pmrem = new THREE.PMREMGenerator(renderer);
   scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+  scene.environmentIntensity = 0.62;
 
-  // Base Apple studio key + cool rim lighting for CNC Satin Aluminium housing
-  const keyLight = new THREE.DirectionalLight(0xffffff, 0.85);
-  keyLight.position.set(0.35, 0.5, 0.6);
+  // Sculpted Apple studio key + cool rim lighting for CNC Satin Aluminium housing
+  const keyLight = new THREE.DirectionalLight(0xffffff, 0.42);
+  keyLight.position.set(0.4, 0.55, 0.5);
   scene.add(keyLight);
 
-  const rimLight = new THREE.DirectionalLight(0xc8deff, 0.55);
-  rimLight.position.set(-0.55, 0.25, -0.3);
+  const rimLight = new THREE.DirectionalLight(0xc8deff, 0.32);
+  rimLight.position.set(-0.55, 0.25, -0.35);
   scene.add(rimLight);
 
-  // Dynamic cursor-following specular studio lights (front + rear rim for 360° inspection)
-  const cursorLight = new THREE.PointLight(0xdbeeff, 0, 1.0, 1.5);
-  cursorLight.position.set(0, 0, 0.22);
+  // Dynamic cursor-following directional studio lights (distance-independent: smooth metallic sheen, zero white-out)
+  const cursorLight = new THREE.DirectionalLight(0xe4f0ff, 0);
+  cursorLight.position.set(0, 0, 0.35);
   scene.add(cursorLight);
 
-  const cursorBackRim = new THREE.PointLight(0xfff1e0, 0, 1.0, 1.6);
-  cursorBackRim.position.set(0, 0, -0.18);
+  const cursorBackRim = new THREE.DirectionalLight(0xfff3e4, 0);
+  cursorBackRim.position.set(0, 0, -0.3);
   scene.add(cursorBackRim);
 
   const rig = new THREE.Group();
@@ -453,13 +488,15 @@ function setupStage() {
       rig.add(gltf.scene);
       const screen = gltf.scene.getObjectByName("Screen");
       const material = screen.material.clone();
-      material.color.set(0xffffff);
+      // True physical AMOLED: dark obsidian glass base + pure emissiveMap (no diffuse white double-exposure)
+      material.color.set(0x060608);
+      material.map = null;
       material.emissive.set(0xffffff);
       material.emissiveMap = texture;
-      material.emissiveIntensity = 1.18;
-      material.map = texture;
+      material.emissiveIntensity = 0.94;
       material.metalness = 0;
-      material.roughness = 0.28;
+      material.roughness = 0.24;
+      material.envMapIntensity = 0.22;
       screen.material = material;
 
       const front = new THREE.Vector3(0, 0, 1).transformDirection(screen.matrixWorld);
@@ -567,6 +604,7 @@ function setupStage() {
       if (Math.abs(cinemaIn - lastCinemaIn) > 0.002) {
         film.style.setProperty("--cinema-in", cinemaIn.toFixed(3));
         lastCinemaIn = cinemaIn;
+        if (hoverActive && !isDragging) syncHoverFromCursor();
       }
       if (Math.abs(cinemaProg - lastCinemaProg) > 0.002) {
         film.style.setProperty("--cinema-progress", cinemaProg.toFixed(3));
@@ -613,22 +651,22 @@ function setupStage() {
     tiltX += ((tiltOn ? targetTiltX : 0) - tiltX) * tiltLerp;
     tiltY += ((tiltOn ? targetTiltY : 0) - tiltY) * tiltLerp;
 
-    const targetLightIntensity = hoverActive || isDragging ? 2.8 : 0;
+    const targetLightIntensity = hoverActive || isDragging ? 0.78 : 0;
     const lightLerp = 1 - Math.pow(0.0004, dt);
-    lightX += (ptrNx * 0.24 - lightX) * lightLerp;
-    lightY += (-ptrNy * 0.24 - lightY) * lightLerp;
+    lightX += (ptrNx * 0.48 - lightX) * lightLerp;
+    lightY += (-ptrNy * 0.48 - lightY) * lightLerp;
     lightIntensity += (targetLightIntensity - lightIntensity) * lightLerp;
-    if (Math.abs(targetLightIntensity - lightIntensity) < 0.008) lightIntensity = targetLightIntensity;
+    if (Math.abs(targetLightIntensity - lightIntensity) < 0.004) lightIntensity = targetLightIntensity;
 
-    cursorLight.position.set(lightX, lightY, 0.22);
+    cursorLight.position.set(lightX, lightY, 0.36);
     cursorLight.intensity = lightIntensity;
-    cursorBackRim.position.set(-lightX * 0.85, -lightY * 0.85, -0.18);
-    cursorBackRim.intensity = lightIntensity * 0.58;
+    cursorBackRim.position.set(-lightX * 0.9, -lightY * 0.9, -0.3);
+    cursorBackRim.intensity = lightIntensity * 0.55;
 
     if (glow) {
-      const boost = clamp01(lightIntensity / 2.8);
-      glow.style.setProperty("--glow-x", `${(50 + (lightX / 0.24) * 26).toFixed(1)}%`);
-      glow.style.setProperty("--glow-y", `${(50 - (lightY / 0.24) * 26).toFixed(1)}%`);
+      const boost = clamp01(lightIntensity / 0.78);
+      glow.style.setProperty("--glow-x", `${(50 + (lightX / 0.48) * 18).toFixed(1)}%`);
+      glow.style.setProperty("--glow-y", `${(50 - (lightY / 0.48) * 18).toFixed(1)}%`);
       glow.style.setProperty("--glow-boost", boost.toFixed(3));
     }
 
@@ -652,8 +690,8 @@ function setupStage() {
       Math.abs(velPitch) > 0.0003 ||
       Math.abs((tiltOn ? targetTiltX : 0) - tiltX) > 0.0005 ||
       Math.abs((tiltOn ? targetTiltY : 0) - tiltY) > 0.0005 ||
-      Math.abs(targetLightIntensity - lightIntensity) > 0.01 ||
-      (hoverActive && (Math.abs(ptrNx * 0.24 - lightX) > 0.001 || Math.abs(-ptrNy * 0.24 - lightY) > 0.001));
+      Math.abs(targetLightIntensity - lightIntensity) > 0.004 ||
+      (hoverActive && (Math.abs(ptrNx * 0.48 - lightX) > 0.001 || Math.abs(-ptrNy * 0.48 - lightY) > 0.001));
 
     if (playing || settling || !modelLoaded) {
       rafId = requestAnimationFrame(loop);

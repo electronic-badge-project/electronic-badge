@@ -498,12 +498,11 @@ html.is-dark-beat .site-header .nav-cta:hover { background: #409cff; }
   --glow-y: 50%;
   --glow-boost: 0;
   position: absolute;
-  inset: -18%;
+  inset: -45%;
   z-index: 0;
-  border-radius: 50%;
   background:
-    radial-gradient(circle at var(--glow-x) var(--glow-y), rgb(160 212 255 / calc(0.2 * var(--glow-boost))), transparent 48%),
-    radial-gradient(circle, rgb(255 255 255 / 0.11) 0%, rgb(10 132 255 / 0.05) 38%, transparent 70%);
+    radial-gradient(closest-side circle at var(--glow-x) var(--glow-y), rgb(150 205 255 / calc(0.11 * var(--glow-boost))) 0%, transparent 78%),
+    radial-gradient(closest-side circle at 50% 50%, rgb(255 255 255 / 0.055) 0%, rgb(10 132 255 / 0.025) 42%, transparent 88%);
   opacity: 0;
   pointer-events: none;
 }
