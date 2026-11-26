@@ -1,1 +1,23 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 340" role="img" aria-labelledby="title desc"><title id="title">Web Serial 直连结构</title><desc id="desc">HTTPS 静态页面在浏览器内处理图片，并通过 Web Serial 直接连接 USB 图片徽章。</desc><rect width="680" height="340" rx="18" fill="#111d2a"/><g font-family="sans-serif" text-anchor="middle"><rect x="48" y="92" width="245" height="156" rx="15" fill="#1c3040" stroke="#53716f"/><text x="170" y="142" fill="#9be5c5" font-size="18">HTTPS 静态页面</text><text x="170" y="175" fill="#c1ceda" font-size="13">浏览器裁切与 JPEG / CRC</text><text x="170" y="201" fill="#c1ceda" font-size="13">Web Serial · 115200 baud</text><circle cx="518" cy="170" r="86" fill="#263b43" stroke="#77cbae"/><circle cx="518" cy="170" r="65" fill="#e4b28a"/><path d="M458 186q58-70 120 0v48H458" fill="#347a70"/><circle cx="496" cy="158" r="6" fill="#111d2a"/><circle cx="540" cy="158" r="6" fill="#111d2a"/><path d="M493 190q25 19 50 0" fill="none" stroke="#111d2a" stroke-width="5" stroke-linecap="round"/><text x="518" y="289" fill="#c1ceda" font-size="14">ESP32-S3 图片徽章</text><path d="M313 170h87" stroke="#77cbae" stroke-width="4"/><path d="m391 160 14 10-14 10" fill="none" stroke="#77cbae" stroke-width="4"/><text x="356" y="148" fill="#9be5c5" font-size="12">USB</text></g></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 320" role="img" aria-labelledby="archTitle archDesc">
+  <title id="archTitle">Web Serial 直连结构</title>
+  <desc id="archDesc">HTTPS 静态页面在浏览器内处理图片，并通过 Web Serial 直接连接 USB 图片徽章。</desc>
+  <g font-family="ui-sans-serif, system-ui, sans-serif" text-anchor="middle">
+    <rect x="24" y="46" width="292" height="196" rx="18" fill="#1b1916" stroke="#3c362d"/>
+    <path d="M24 64a18 18 0 0 1 18-18h256a18 18 0 0 1 18 18v20H24Z" fill="#26231d"/>
+    <circle cx="52" cy="64" r="4" fill="#a79d90"/>
+    <circle cx="68" cy="64" r="4" fill="#a79d90"/>
+    <circle cx="84" cy="64" r="4" fill="#a79d90"/>
+    <text x="170" y="132" fill="#e7c48a" font-size="18">HTTPS 静态页面</text>
+    <text x="170" y="162" fill="#c9c0b2" font-size="13">浏览器裁切与 JPEG / CRC</text>
+    <text x="170" y="188" fill="#c9c0b2" font-size="13">Web Serial · 115200 baud</text>
+    <path d="M332 144h78" stroke="#e7c48a" stroke-width="2"/>
+    <path d="m400 136 14 8-14 8" fill="none" stroke="#e7c48a" stroke-width="2"/>
+    <text x="372" y="126" fill="#e7c48a" font-size="12">USB</text>
+    <circle cx="548" cy="144" r="86" fill="#141210" stroke="#e7c48a" stroke-width="3"/>
+    <circle cx="548" cy="144" r="72" fill="#16343c"/>
+    <circle cx="572" cy="126" r="16" fill="#fff6df"/>
+    <path d="M476 156c48-28 92 10 144-4v52H476Z" fill="#1b4a50"/>
+    <path d="M476 186c60-16 110 12 144 0v22H476Z" fill="#102226"/>
+    <text x="548" y="268" fill="#c9c0b2" font-size="14">ESP32-S3 图片徽章</text>
+  </g>
+</svg>
