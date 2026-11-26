@@ -8,6 +8,7 @@ setupNav();
 setupScrollFrost();
 setupRevealFallback();
 setupStage();
+setupStudioDemo();
 
 function clamp01(value) {
   return Math.max(0, Math.min(1, value));
@@ -628,4 +629,352 @@ function drawRipple(context, oldImage, newImage, radius) {
   context.arc(256, 256, radius, 0, Math.PI * 2, true);
   context.fillStyle = "rgba(0, 0, 0, 0.25)";
   context.fill("evenodd");
+}
+
+function setupStudioDemo() {
+  const root = document.getElementById("studio-demo");
+  const wrap = document.getElementById("studio-canvas-wrap");
+  const cropCanvas = document.getElementById("studio-crop-canvas");
+  const badgeCanvas = document.getElementById("studio-badge-canvas");
+  if (!root || !wrap || !cropCanvas || !badgeCanvas) return;
+
+  const cropCtx = cropCanvas.getContext("2d");
+  const badgeCtx = badgeCanvas.getContext("2d");
+  const zoomInput = document.getElementById("studio-zoom");
+  const zoomOut = document.getElementById("studio-zoom-out");
+  const brightInput = document.getElementById("studio-bright");
+  const brightOut = document.getElementById("studio-bright-out");
+  const fxLabel = document.getElementById("studio-fx-label");
+  const fileInput = document.getElementById("studio-local-file");
+  const thumbButtons = [...root.querySelectorAll(".studio-thumb")];
+  const fxButtons = [...root.querySelectorAll("[data-studio-fx]")];
+
+  const FX_META = {
+    fade: { label: "黑场淡变 · 300 ms", duration: 300 },
+    slide: { label: "水平推入 · 300 ms", duration: 300 },
+    ripple: { label: "径向涟漪 · 400 ms", duration: 400 },
+    direct: { label: "直接切换 · 即时", duration: 0 },
+  };
+
+  const DEMO_SOURCES = [
+    "assets/demo/01.jpg",
+    "assets/demo/02.jpg",
+    "assets/demo/03.jpg",
+    "assets/demo/04.jpg",
+  ];
+
+  const loadedDemos = new Array(DEMO_SOURCES.length).fill(null);
+  let customImage = null;
+  let customObjectUrl = null;
+  let activeDemoIndex = 0;
+  let currentImage = null;
+
+  // Normalized crop center (0..1 of image) and zoom (1..2.4)
+  let cx = 0.5;
+  let cy = 0.5;
+  let zoom = Number(zoomInput.value) || 1.08;
+  let brightness = Number(brightInput.value) || 140;
+  let activeFx = "fade";
+  let dragging = false;
+  let dragStart = null;
+  let layoutRect = { x: 0, y: 0, w: 0, h: 0, r: 100 };
+
+  // Offscreen 512x512 buffers for exact firmware transition rendering
+  const prevBuf = document.createElement("canvas");
+  prevBuf.width = 512;
+  prevBuf.height = 512;
+  const prevCtx = prevBuf.getContext("2d");
+
+  const nextBuf = document.createElement("canvas");
+  nextBuf.width = 512;
+  nextBuf.height = 512;
+  const nextCtx = nextBuf.getContext("2d");
+
+  const compBuf = document.createElement("canvas");
+  compBuf.width = 512;
+  compBuf.height = 512;
+  const compCtx = compBuf.getContext("2d");
+
+  let fxAnim = null;
+  let fxRaf = 0;
+
+  const ensureDemoImage = (index, onReady) => {
+    if (loadedDemos[index] && loadedDemos[index].complete && loadedDemos[index].naturalWidth) {
+      onReady(loadedDemos[index]);
+      return;
+    }
+    const img = new Image();
+    img.decoding = "async";
+    img.src = DEMO_SOURCES[index];
+    loadedDemos[index] = img;
+    if (img.complete && img.naturalWidth) onReady(img);
+    else img.addEventListener("load", () => onReady(img), { once: true });
+  };
+
+  const clampCenter = (img) => {
+    if (!img || !img.naturalWidth) return;
+    const minSide = Math.min(img.naturalWidth, img.naturalHeight);
+    const cropSize = minSide / zoom;
+    const halfW = (cropSize * 0.5) / img.naturalWidth;
+    const halfH = (cropSize * 0.5) / img.naturalHeight;
+    cx = Math.max(halfW, Math.min(1 - halfW, cx));
+    cy = Math.max(halfH, Math.min(1 - halfH, cy));
+  };
+
+  const renderCroppedTo = (targetCtx, img) => {
+    targetCtx.clearRect(0, 0, 512, 512);
+    targetCtx.fillStyle = "#000";
+    targetCtx.fillRect(0, 0, 512, 512);
+    if (!img || !img.naturalWidth) return;
+    clampCenter(img);
+    const minSide = Math.min(img.naturalWidth, img.naturalHeight);
+    const cropSize = minSide / zoom;
+    const sx = cx * img.naturalWidth - cropSize * 0.5;
+    const sy = cy * img.naturalHeight - cropSize * 0.5;
+    targetCtx.drawImage(img, sx, sy, cropSize, cropSize, 0, 0, 512, 512);
+  };
+
+  const blitToBadge = (sourceCanvas) => {
+    badgeCtx.clearRect(0, 0, 466, 466);
+    badgeCtx.drawImage(sourceCanvas, 0, 0, 466, 466);
+    const lum = 0.28 + 0.72 * ((brightness - 30) / 150);
+    if (lum < 0.995) {
+      badgeCtx.fillStyle = `rgba(0, 0, 0, ${(1 - lum).toFixed(3)})`;
+      badgeCtx.fillRect(0, 0, 466, 466);
+    }
+  };
+
+  const drawCropper = () => {
+    const W = cropCanvas.width;
+    const H = cropCanvas.height;
+    cropCtx.clearRect(0, 0, W, H);
+    cropCtx.fillStyle = "#0f0f11";
+    cropCtx.fillRect(0, 0, W, H);
+    if (!currentImage || !currentImage.naturalWidth) return;
+
+    clampCenter(currentImage);
+    const pad = 28;
+    const scale = Math.min((W - pad * 2) / currentImage.naturalWidth, (H - pad * 2) / currentImage.naturalHeight);
+    const drawW = currentImage.naturalWidth * scale;
+    const drawH = currentImage.naturalHeight * scale;
+    const drawX = (W - drawW) * 0.5;
+    const drawY = (H - drawH) * 0.5;
+
+    const minSide = Math.min(currentImage.naturalWidth, currentImage.naturalHeight);
+    const radius = ((minSide / zoom) * 0.5) * scale;
+    const circleX = drawX + cx * drawW;
+    const circleY = drawY + cy * drawH;
+    layoutRect = { x: drawX, y: drawY, w: drawW, h: drawH, r: radius };
+
+    // Source image
+    cropCtx.save();
+    cropCtx.beginPath();
+    cropCtx.roundRect(drawX, drawY, drawW, drawH, 10);
+    cropCtx.clip();
+    cropCtx.drawImage(currentImage, drawX, drawY, drawW, drawH);
+
+    // Dimmed exterior outside circular crop area
+    cropCtx.beginPath();
+    cropCtx.rect(drawX, drawY, drawW, drawH);
+    cropCtx.arc(circleX, circleY, radius, 0, Math.PI * 2, true);
+    cropCtx.fillStyle = "rgba(0, 0, 0, 0.58)";
+    cropCtx.fill("evenodd");
+    cropCtx.restore();
+
+    // Subtle rule-of-thirds guides while dragging
+    if (dragging) {
+      cropCtx.save();
+      cropCtx.beginPath();
+      cropCtx.arc(circleX, circleY, radius, 0, Math.PI * 2);
+      cropCtx.clip();
+      cropCtx.strokeStyle = "rgba(255, 255, 255, 0.45)";
+      cropCtx.lineWidth = 1;
+      cropCtx.setLineDash([4, 4]);
+      const d = radius * 2;
+      const left = circleX - radius;
+      const top = circleY - radius;
+      for (const frac of [1 / 3, 2 / 3]) {
+        cropCtx.beginPath();
+        cropCtx.moveTo(left + d * frac, top);
+        cropCtx.lineTo(left + d * frac, top + d);
+        cropCtx.moveTo(left, top + d * frac);
+        cropCtx.lineTo(left + d, top + d * frac);
+        cropCtx.stroke();
+      }
+      cropCtx.restore();
+    }
+
+    // Crisp Apple-blue circular crop bezel + subtle white inner hairline
+    cropCtx.beginPath();
+    cropCtx.arc(circleX, circleY, radius, 0, Math.PI * 2);
+    cropCtx.strokeStyle = dragging ? "#409cff" : "#0a84ff";
+    cropCtx.lineWidth = 2.5;
+    cropCtx.stroke();
+
+    cropCtx.beginPath();
+    cropCtx.arc(circleX, circleY, Math.max(2, radius - 2), 0, Math.PI * 2);
+    cropCtx.strokeStyle = "rgba(255, 255, 255, 0.55)";
+    cropCtx.lineWidth = 1;
+    cropCtx.stroke();
+  };
+
+  const renderStatic = () => {
+    drawCropper();
+    renderCroppedTo(nextCtx, currentImage);
+    if (!fxAnim) blitToBadge(nextBuf);
+  };
+
+  const stepTransition = (now) => {
+    fxRaf = 0;
+    if (!fxAnim) return;
+    const elapsed = now - fxAnim.start;
+    const t = fxAnim.duration <= 0 ? 1 : clamp01(elapsed / fxAnim.duration);
+
+    compCtx.globalAlpha = 1;
+    compCtx.fillStyle = "#000";
+    compCtx.fillRect(0, 0, 512, 512);
+
+    if (fxAnim.mode === "fade") {
+      const b = fadeBrightness(t);
+      drawDim(compCtx, t < 130 / 300 ? prevBuf : nextBuf, b);
+    } else if (fxAnim.mode === "slide") {
+      drawSlide(compCtx, prevBuf, nextBuf, easeUnit(t) * 512);
+    } else if (fxAnim.mode === "ripple") {
+      drawRipple(compCtx, prevBuf, nextBuf, t * 512);
+    } else {
+      compCtx.drawImage(nextBuf, 0, 0);
+    }
+
+    blitToBadge(compBuf);
+    if (t < 1) {
+      fxRaf = requestAnimationFrame(stepTransition);
+    } else {
+      fxAnim = null;
+      blitToBadge(nextBuf);
+    }
+  };
+
+  const triggerTransition = (nextImg, mode = activeFx) => {
+    if (!nextImg || !nextImg.naturalWidth) return;
+    // Snapshot current badge image into prevBuf before switching
+    prevCtx.clearRect(0, 0, 512, 512);
+    if (currentImage && currentImage.naturalWidth) {
+      prevCtx.drawImage(nextBuf, 0, 0);
+    }
+    currentImage = nextImg;
+    cx = 0.5;
+    cy = 0.5;
+    drawCropper();
+    renderCroppedTo(nextCtx, currentImage);
+
+    const duration = reduced.matches ? 0 : (FX_META[mode]?.duration ?? 300);
+    if (duration <= 0 || !prevBuf.width) {
+      fxAnim = null;
+      if (fxRaf) {
+        cancelAnimationFrame(fxRaf);
+        fxRaf = 0;
+      }
+      blitToBadge(nextBuf);
+      return;
+    }
+    fxAnim = { mode, start: performance.now(), duration };
+    if (!fxRaf) fxRaf = requestAnimationFrame(stepTransition);
+  };
+
+  const selectDemo = (index, fxMode = activeFx) => {
+    activeDemoIndex = ((index % DEMO_SOURCES.length) + DEMO_SOURCES.length) % DEMO_SOURCES.length;
+    customImage = null;
+    thumbButtons.forEach((btn, i) => btn.classList.toggle("is-active", i === activeDemoIndex));
+    ensureDemoImage(activeDemoIndex, (img) => {
+      if (customImage) return;
+      triggerTransition(img, fxMode);
+    });
+  };
+
+  thumbButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      selectDemo(Number(btn.dataset.demoIndex), activeFx);
+    });
+  });
+
+  fxButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const mode = btn.dataset.studioFx;
+      activeFx = mode;
+      fxButtons.forEach((b) => b.classList.toggle("is-active", b === btn));
+      if (fxLabel && FX_META[mode]) fxLabel.textContent = FX_META[mode].label;
+      // Switch to next sample image using the chosen transition so user immediately sees it live!
+      selectDemo(activeDemoIndex + 1, mode);
+    });
+  });
+
+  zoomInput.addEventListener("input", () => {
+    zoom = Number(zoomInput.value);
+    zoomOut.textContent = `${zoom.toFixed(2)}×`;
+    renderStatic();
+  });
+
+  brightInput.addEventListener("input", () => {
+    brightness = Number(brightInput.value);
+    brightOut.textContent = `${brightness} / 180`;
+    if (!fxAnim) blitToBadge(nextBuf);
+  });
+
+  fileInput.addEventListener("change", () => {
+    const file = fileInput.files && fileInput.files[0];
+    if (!file) return;
+    if (customObjectUrl) URL.revokeObjectURL(customObjectUrl);
+    customObjectUrl = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      customImage = img;
+      thumbButtons.forEach((btn) => btn.classList.remove("is-active"));
+      zoom = 1.05;
+      zoomInput.value = String(zoom);
+      zoomOut.textContent = `${zoom.toFixed(2)}×`;
+      wrap.classList.add("has-interacted");
+      triggerTransition(img, activeFx);
+    };
+    img.src = customObjectUrl;
+    fileInput.value = "";
+  });
+
+  // Pointer drag inside the circular cropper
+  wrap.addEventListener("pointerdown", (event) => {
+    if (!currentImage || !layoutRect.w) return;
+    dragging = true;
+    wrap.classList.add("is-dragging", "has-interacted");
+    wrap.setPointerCapture(event.pointerId);
+    dragStart = { x: event.clientX, y: event.clientY, cx, cy };
+    drawCropper();
+  });
+
+  wrap.addEventListener("pointermove", (event) => {
+    if (!dragging || !dragStart || !layoutRect.w) return;
+    const rect = cropCanvas.getBoundingClientRect();
+    const scaleX = cropCanvas.width / Math.max(rect.width, 1);
+    const scaleY = cropCanvas.height / Math.max(rect.height, 1);
+    const dx = (event.clientX - dragStart.x) * scaleX;
+    const dy = (event.clientY - dragStart.y) * scaleY;
+    cx = dragStart.cx + dx / layoutRect.w;
+    cy = dragStart.cy + dy / layoutRect.h;
+    renderStatic();
+  });
+
+  const endDrag = () => {
+    if (!dragging) return;
+    dragging = false;
+    dragStart = null;
+    wrap.classList.remove("is-dragging");
+    drawCropper();
+  };
+  wrap.addEventListener("pointerup", endDrag);
+  wrap.addEventListener("pointercancel", endDrag);
+
+  // Initial load of sample 01 (and pre-warm 02 for instant transition click)
+  ensureDemoImage(0, (img) => {
+    currentImage = img;
+    renderStatic();
+    ensureDemoImage(1, () => {});
+  });
 }

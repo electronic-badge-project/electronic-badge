@@ -243,24 +243,95 @@
         <div class="section-head section-head-center reveal">
           <p class="section-eyebrow">HTTPS Web Serial 控制台</p>
           <h2 id="console-title">自己的图，在浏览器里裁好就传。</h2>
-          <p class="section-lead">选择、拖放或粘贴 JPG、PNG、WebP 图片，在正圆参考框里调整构图。仅在你主动点击连接并挑选串口后，网页才会与徽章建立通信。</p>
+          <p class="section-lead">直接在下方试裁样图或选一张自己的照片，拖动构图并实时预览固件切图动效。真正连接硬件时，只有你点击连接并亲自选择串口，网页才会访问设备。</p>
           <div class="section-actions">
-            <a class="pill" href="console/">打开控制台</a>
+            <a class="pill" href="console/">打开完整控制台</a>
             <a class="link" href="https://github.com/ocean-sudo/electronic-badge">查看源码 ›</a>
           </div>
         </div>
 
-        <figure class="browser-frame reveal">
-          <div class="browser-bar" aria-hidden="true">
-            <span class="browser-dots"><i></i><i></i><i></i></span>
-            <span class="browser-url">electronic-badge-project.github.io/electronic-badge/console/</span>
+        <div class="studio-window reveal" id="studio-demo" aria-label="交互式网页控制台预览">
+          <div class="studio-titlebar">
+            <span class="browser-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+            <span class="studio-window-title">图片徽章工作室 · Web Serial 控制台</span>
+            <a class="studio-open-btn" href="console/">连接真实设备 ›</a>
           </div>
-          <picture>
-            <source media="(max-width: 40em)" srcset="assets/console-mobile.webp">
-            <img src="assets/console-desktop.webp" alt="网页控制台的裁切界面。截图时未连接徽章，预览图为合成素材。" width="1440" height="900" loading="lazy">
-          </picture>
-          <figcaption class="shot-caption">离线裁切界面实景截图（未连接真实设备，画面为合成演示素材）。</figcaption>
-        </figure>
+
+          <div class="studio-body">
+            <div class="studio-darkroom">
+              <div class="studio-canvas-wrap" id="studio-canvas-wrap">
+                <canvas id="studio-crop-canvas" width="720" height="520" aria-label="交互式圆形裁切画布：可拖动选区调整构图"></canvas>
+                <span class="studio-drag-hint" id="studio-drag-hint">拖动圆形选区调整构图</span>
+              </div>
+
+              <div class="studio-toolbar">
+                <div class="studio-thumbs" role="group" aria-label="切换演示图片">
+                  <button type="button" class="studio-thumb is-active" data-demo-index="0" aria-label="演示图 1">
+                    <img src="assets/demo/01.jpg" alt="" width="48" height="48" loading="lazy">
+                  </button>
+                  <button type="button" class="studio-thumb" data-demo-index="1" aria-label="演示图 2">
+                    <img src="assets/demo/02.jpg" alt="" width="48" height="48" loading="lazy">
+                  </button>
+                  <button type="button" class="studio-thumb" data-demo-index="2" aria-label="演示图 3">
+                    <img src="assets/demo/03.jpg" alt="" width="48" height="48" loading="lazy">
+                  </button>
+                  <button type="button" class="studio-thumb" data-demo-index="3" aria-label="演示图 4">
+                    <img src="assets/demo/04.jpg" alt="" width="48" height="48" loading="lazy">
+                  </button>
+                  <label class="studio-pick-btn">
+                    <input type="file" id="studio-local-file" accept="image/jpeg,image/png,image/webp">
+                    <span>＋ 试裁本地图</span>
+                  </label>
+                </div>
+
+                <label class="studio-zoom-control">
+                  <span>缩放</span>
+                  <input type="range" id="studio-zoom" min="1" max="2.4" step="0.02" value="1.08">
+                  <output id="studio-zoom-out" for="studio-zoom">1.08×</output>
+                </label>
+              </div>
+            </div>
+
+            <aside class="studio-inspector" aria-label="实时圆屏预览与动效测试">
+              <div class="inspector-head">
+                <span class="inspector-kicker">实时圆屏效果</span>
+                <span class="inspector-badge-chip">466×466 · JPEG 0.85</span>
+              </div>
+
+              <div class="inspector-bezel-stage">
+                <div class="inspector-bezel">
+                  <canvas id="studio-badge-canvas" width="466" height="466" aria-label="圆形 AMOLED 徽章实时预览"></canvas>
+                </div>
+              </div>
+
+              <div class="inspector-group">
+                <div class="inspector-row-head">
+                  <span class="inspector-label">点击试看固件转场</span>
+                  <span class="inspector-meta" id="studio-fx-label">黑场淡变 · 300 ms</span>
+                </div>
+                <div class="inspector-seg" role="group" aria-label="试看切换动效">
+                  <button type="button" class="seg-btn is-active" data-studio-fx="fade">黑场</button>
+                  <button type="button" class="seg-btn" data-studio-fx="slide">推入</button>
+                  <button type="button" class="seg-btn" data-studio-fx="ripple">涟漪</button>
+                  <button type="button" class="seg-btn" data-studio-fx="direct">直切</button>
+                </div>
+              </div>
+
+              <div class="inspector-group">
+                <label class="inspector-slider">
+                  <span class="inspector-label">屏幕亮度模拟</span>
+                  <output id="studio-bright-out" for="studio-bright">140 / 180</output>
+                  <input type="range" id="studio-bright" min="30" max="180" step="1" value="140">
+                </label>
+              </div>
+
+              <div class="inspector-footer">
+                <a class="pill studio-cta" href="console/">在完整控制台中连接写入</a>
+                <p class="inspector-note">图片仅在你的浏览器内存中处理，绝不上传服务器。</p>
+              </div>
+            </aside>
+          </div>
+        </div>
       </div>
     </section>
 
