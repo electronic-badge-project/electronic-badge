@@ -1498,211 +1498,8 @@ class BadgeSerial {
   }
 }
 
-class WebUsbCdcPort {
-  constructor(device) {
-    this.device = device;
-    this.readable = null;
-    this.writable = null;
-    this._controlInterface = null;
-    this._dataInterface = null;
-    this._inEndpoint = null;
-    this._outEndpoint = null;
-    this._claimed = [];
-    this._closing = false;
-    this._closePromise = null;
-  }
-  static isCompatibleDevice(device) {
-    const config = device.configuration || device.configurations?.[0];
-    if (!config) return device.vendorId === 0x303a;
-    for (const iface of config.interfaces) {
-      for (const alt of iface.alternates) {
-        if (alt.interfaceClass === 0x02 || alt.interfaceClass === 0x0a) return true;
-      }
-    }
-    return device.vendorId === 0x303a;
-  }
-  async open({baudRate = 115200} = {}) {
-    this._closing = false;
-    this._closePromise = null;
-    const device = this.device;
-    if (!device.opened) await device.open();
-    if (!device.configuration && device.configurations?.length) {
-      await device.selectConfiguration(device.configurations[0].configurationValue);
-    }
-    const config = device.configuration;
-    if (!config) throw new Error('USB 设备未提供可用配置。');
-
-    let controlIface = null, controlAlt = 0;
-    let dataIface = null, dataAlt = 0, inEp = null, outEp = null;
-    let fallbackIface = null, fallbackAlt = 0, fallbackIn = null, fallbackOut = null;
-
-    for (const iface of config.interfaces) {
-      for (const alt of iface.alternates) {
-        const bulkIn = alt.endpoints.find(ep => ep.direction === 'in' && ep.type === 'bulk');
-        const bulkOut = alt.endpoints.find(ep => ep.direction === 'out' && ep.type === 'bulk');
-        if (alt.interfaceClass === 0x02 && controlIface === null) {
-          controlIface = iface.interfaceNumber;
-          controlAlt = alt.alternateSetting;
-        }
-        if (alt.interfaceClass === 0x0a && bulkIn && bulkOut && dataIface === null) {
-          dataIface = iface.interfaceNumber;
-          dataAlt = alt.alternateSetting;
-          inEp = bulkIn.endpointNumber;
-          outEp = bulkOut.endpointNumber;
-        } else if (bulkIn && bulkOut && fallbackIface === null) {
-          fallbackIface = iface.interfaceNumber;
-          fallbackAlt = alt.alternateSetting;
-          fallbackIn = bulkIn.endpointNumber;
-          fallbackOut = bulkOut.endpointNumber;
-        }
-      }
-    }
-
-    if (dataIface === null) {
-      dataIface = fallbackIface;
-      dataAlt = fallbackAlt;
-      inEp = fallbackIn;
-      outEp = fallbackOut;
-    }
-    if (dataIface === null || inEp === null || outEp === null) {
-      throw new Error('未在所选 USB 设备中找到兼容的 CDC 串口数据端点。');
-    }
-    if (controlIface === null) {
-      controlIface = dataIface;
-      controlAlt = dataAlt;
-    }
-
-    this._controlInterface = controlIface;
-    this._dataInterface = dataIface;
-    this._inEndpoint = inEp;
-    this._outEndpoint = outEp;
-    this._claimed = [];
-
-    try {
-      await device.claimInterface(dataIface);
-      this._claimed.push(dataIface);
-      if (dataAlt !== 0) await device.selectAlternateInterface(dataIface, dataAlt);
-      if (controlIface !== dataIface) {
-        try {
-          await device.claimInterface(controlIface);
-          this._claimed.push(controlIface);
-          if (controlAlt !== 0) await device.selectAlternateInterface(controlIface, controlAlt);
-        } catch (_) {}
-      }
-    } catch (error) {
-      await this.close();
-      throw new Error('无法占用 USB 串口接口（可能被系统驱动或其他应用占用）：' + error.message);
-    }
-
-    // Standard CDC-ACM SET_LINE_CODING (115200 8N1) + SET_CONTROL_LINE_STATE (DTR | RTS)
-    const coding = new ArrayBuffer(7);
-    const view = new DataView(coding);
-    view.setUint32(0, baudRate, true);
-    view.setUint8(4, 0);
-    view.setUint8(5, 0);
-    view.setUint8(6, 8);
-    try {
-      await device.controlTransferOut({
-        requestType: 'class', recipient: 'interface',
-        request: 0x20, value: 0, index: controlIface
-      }, coding);
-    } catch (_) {}
-    try {
-      await device.controlTransferOut({
-        requestType: 'class', recipient: 'interface',
-        request: 0x22, value: 0x03, index: controlIface
-      });
-    } catch (_) {}
-
-    const self = this;
-    this.readable = new ReadableStream({
-      async pull(controller) {
-        while (!self._closing) {
-          let result;
-          try {
-            result = await device.transferIn(inEp, 4096);
-          } catch (error) {
-            if (self._closing) { try { controller.close(); } catch (_) {} return; }
-            controller.error(error);
-            return;
-          }
-          if (self._closing) { try { controller.close(); } catch (_) {} return; }
-          if (result.status === 'ok') {
-            if (result.data && result.data.byteLength > 0) {
-              controller.enqueue(new Uint8Array(result.data.buffer, result.data.byteOffset, result.data.byteLength));
-              return;
-            }
-            continue;
-          }
-          if (result.status === 'stall') {
-            try { await device.clearHalt('in', inEp); } catch (_) {}
-            continue;
-          }
-          controller.error(new Error('USB 读取异常：' + result.status));
-          return;
-        }
-        try { controller.close(); } catch (_) {}
-      },
-      cancel() {
-        self._closing = true;
-        void self._closeHardware();
-      }
-    });
-
-    this.writable = new WritableStream({
-      async write(chunk) {
-        if (self._closing) throw new Error('USB 连接已关闭。');
-        const bytes = chunk instanceof Uint8Array ? chunk : new Uint8Array(chunk.buffer, chunk.byteOffset || 0, chunk.byteLength);
-        if (!bytes.byteLength) return;
-        const result = await device.transferOut(outEp, bytes);
-        if (result.status === 'stall') {
-          await device.clearHalt('out', outEp);
-          const retry = await device.transferOut(outEp, bytes);
-          if (retry.status !== 'ok') throw new Error('USB 写入失败：' + retry.status);
-          return;
-        }
-        if (result.status !== 'ok') throw new Error('USB 写入失败：' + result.status);
-      },
-      abort() {
-        self._closing = true;
-        void self._closeHardware();
-      }
-    });
-  }
-  _closeHardware() {
-    if (this._closePromise) return this._closePromise;
-    const device = this.device;
-    const controlIface = this._controlInterface;
-    const claimed = [...this._claimed];
-    this._claimed = [];
-    this._closePromise = (async () => {
-      try {
-        if (device.opened && controlIface !== null) {
-          await device.controlTransferOut({
-            requestType: 'class', recipient: 'interface',
-            request: 0x22, value: 0x00, index: controlIface
-          });
-        }
-      } catch (_) {}
-      for (const num of claimed) {
-        try { if (device.opened) await device.releaseInterface(num); } catch (_) {}
-      }
-      try { if (device.opened) await device.close(); } catch (_) {}
-    })();
-    return this._closePromise;
-  }
-  async close() {
-    this._closing = true;
-    await this._closeHardware();
-    this.readable = null;
-    this.writable = null;
-  }
-}
-
 const badgeSerial = new BadgeSerial();
 const serialSupported = 'serial' in navigator && typeof navigator.serial.requestPort === 'function';
-const webUsbSupported = !serialSupported && 'usb' in navigator && typeof navigator.usb.requestDevice === 'function';
-const transportSupported = serialSupported || webUsbSupported;
 let lastSerialPort = null, firmwareBytes = null, pendingFirmwarePort = null, firmwareLoading = false;
 let esptoolModulePromise = null;
 let firmwareModulePromise = null;
@@ -2060,7 +1857,7 @@ function updateControls() {
   cropSelection.tabIndex = !image || busy ? -1 : 0;
   for (const handle of cropSelection.querySelectorAll('[data-crop-handle]')) handle.disabled = !image || busy;
   if (busy) { finishCropDrag(); clearImageDrag(); }
-  $('connect').disabled = busy || badgeSerial.open || !transportSupported;
+  $('connect').disabled = busy || badgeSerial.open || !serialSupported;
   $('disconnect').disabled = busy || !badgeSerial.open;
   $('refresh').disabled = busy || !connected;
   $('upload').disabled = !connected || busy || !image || !state.storage_ok || !state.display_ok || (state.psram_ok === false);
@@ -2540,53 +2337,32 @@ async function reconnectAfterReboot() {
   await new Promise(resolve=>setTimeout(resolve,2500));
   const deadline=performance.now()+8000;
   while (performance.now()<deadline) {
-    if (serialSupported) {
-      const ports=await navigator.serial.getPorts();
-      const candidate=ports.find(port=>port===previous) || (ports.length===1?ports[0]:null);
-      if (candidate) {
-        try { await badgeSerial.connect(candidate); return; }
-        catch (_) { await badgeSerial.close(); }
-      }
-    } else if (webUsbSupported) {
-      const devices=(await navigator.usb.getDevices()).filter(WebUsbCdcPort.isCompatibleDevice);
-      const prevDev = previous instanceof WebUsbCdcPort ? previous.device : null;
-      const dev = devices.find(d=>prevDev && d.vendorId===prevDev.vendorId && d.productId===prevDev.productId && d.serialNumber===prevDev.serialNumber) || (devices.length===1?devices[0]:null);
-      if (dev) {
-        try { await badgeSerial.connect(new WebUsbCdcPort(dev)); return; }
-        catch (_) { await badgeSerial.close(); }
-      }
+    const ports=await navigator.serial.getPorts();
+    const candidate=ports.find(port=>port===previous) || (ports.length===1?ports[0]:null);
+    if (candidate) {
+      try { await badgeSerial.connect(candidate); return; }
+      catch (_) { await badgeSerial.close(); }
     }
     await new Promise(resolve=>setTimeout(resolve,500));
   }
   throw new Error('设备已重启，但浏览器尚未重新发现串口；请点击“连接徽章”。');
 }
 async function connectBadge() {
-  if (!transportSupported || busy) return;
+  if (!serialSupported || busy) return;
   busy=true;
   updateControls();
-  message(serialSupported
-    ? '请选择徽章串口；若仅有一个已授权端口，将直接重连。'
-    : '请选择徽章 USB 设备（WebUSB 直连模式）；若仅有一个已授权设备，将直接重连。');
+  message('请选择徽章串口；若仅有一个已授权端口，将直接重连。');
   try {
-    let port;
-    if (serialSupported) {
-      const granted=await navigator.serial.getPorts();
-      port=granted.length===1 ? granted[0] : await navigator.serial.requestPort();
-    } else {
-      const granted=(await navigator.usb.getDevices()).filter(WebUsbCdcPort.isCompatibleDevice);
-      const device=granted.length===1
-        ? granted[0]
-        : await navigator.usb.requestDevice({filters:[{classCode:0x02},{vendorId:0x303a}]});
-      port=new WebUsbCdcPort(device);
-    }
+    const granted=await navigator.serial.getPorts();
+    const port=granted.length===1 ? granted[0] : await navigator.serial.requestPort();
     lastSerialPort = port;
     await badgeSerial.connect(port);
     await refreshStatus(false);
     if (menuVisible()) await readMenu();
   } catch (error) {
     await badgeSerial.close();
-    markDisconnected(error.name==='NotFoundError' ? '未选择设备。' : error.message);
-    message(error.name==='NotFoundError' ? '已取消设备选择。' : error.message,'error');
+    markDisconnected(error.name==='NotFoundError' ? '未选择串口。' : error.message);
+    message(error.name==='NotFoundError' ? '已取消串口选择。' : error.message,'error');
   } finally {
     busy=false;
     updateControls();
@@ -2608,7 +2384,7 @@ $('disconnect').addEventListener('click',async()=>{
   message('已断开徽章串口。');
 });
 if (serialSupported) {
-  $('serialSupport').textContent='桌面 Web Serial 模式已就绪（Chromium / Firefox 151+）；浏览器必须允许此 HTTPS 页面访问串口。';
+  $('serialSupport').textContent='需要支持 Web Serial 的桌面 Chromium 或 Firefox 151+；浏览器必须允许此 HTTPS 页面访问串口。';
   navigator.serial.addEventListener('disconnect',event=>{
     if (event.port!==badgeSerial.port) return;
     badgeSerial.close().finally(()=>{
@@ -2616,17 +2392,8 @@ if (serialSupported) {
       message('USB 设备已断开。请重新连接后再操作。','error');
     });
   });
-} else if (webUsbSupported) {
-  $('serialSupport').textContent='已启用 Android Chrome WebUSB 直连模式：用支持数据传输的 USB-C 线连接徽章即可传图与控制（固件刷写仍需桌面端 Web Serial）。';
-  navigator.usb.addEventListener('disconnect',event=>{
-    if (!(badgeSerial.port instanceof WebUsbCdcPort) || event.device!==badgeSerial.port.device) return;
-    badgeSerial.close().finally(()=>{
-      markDisconnected('USB 设备已断开。');
-      message('USB 设备已断开。请重新连接后再操作。','error');
-    });
-  });
 } else {
-  $('serialSupport').textContent='当前浏览器不支持 Web Serial 或 WebUSB（iOS Safari / WebKit 暂未开放 USB 接口）。请改用桌面 Chromium / Firefox 151+ 或 Android Chrome，并通过 HTTPS 打开本页。';
+  $('serialSupport').textContent='当前浏览器没有 Web Serial。请使用支持 Web Serial 的桌面 Chromium 或 Firefox 151+，并通过 HTTPS 打开本页。';
 }
 window.addEventListener('pagehide',()=>{ void badgeSerial.close(); });
 async function poll() {
