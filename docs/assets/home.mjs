@@ -94,14 +94,20 @@ function setupRevealFallback() {
   for (const el of items) observer.observe(el);
 }
 
+function wrapAnglePi(rad) {
+  const twoPi = Math.PI * 2;
+  return ((((rad + Math.PI) % twoPi) + twoPi) % twoPi) - Math.PI;
+}
+
 function setupStage() {
   const film = document.getElementById("film");
   const stage = document.querySelector(".stage");
   const canvas = document.getElementById("badge-stage");
   const status = document.getElementById("stage-status");
-  const toggle = document.getElementById("demo-toggle");
+  const dragHint = document.getElementById("stage-drag-hint");
   const view = canvas.parentElement;
   const frame = stage.querySelector(".stage-frame");
+  const glow = frame.querySelector(".stage-glow");
   const capCards = [...document.querySelectorAll(".cap-card")];
   const chapterPills = [...document.querySelectorAll(".chapter-pill")];
   const pointerQuery = matchMedia("(pointer: fine) and (prefers-reduced-motion: no-preference)");
@@ -109,33 +115,62 @@ function setupStage() {
   const BEAT_TARGETS = [0.22, 0.41, 0.59, 0.77, 0.93];
   const BEAT_IDS = ["place", "fade", "slide", "ripple", "spin"];
 
-  let playing = !reduced.matches;
   let filmStart = 0;
   let filmSpan = 1;
   let targetProgress = 0;
+  let lastScrollTarget = 0;
   let manualOverride = null;
   let shown = 0;
   let activeBeat = 0;
+
+  // Hover tilt & dynamic cursor studio lighting state
   let tiltX = 0;
   let tiltY = 0;
   let targetTiltX = 0;
   let targetTiltY = 0;
+  let hoverActive = false;
+  let ptrNx = 0;
+  let ptrNy = 0;
+  let lightX = 0;
+  let lightY = 0;
+  let lightIntensity = 0;
+
+  // Anytime 360° free drag + inertia + seamless shortest-arc return on scroll
+  let userYaw = 0;
+  let userPitch = 0;
+  let velYaw = 0;
+  let velPitch = 0;
+  let isDragging = false;
+  let dragPointerId = null;
+  let dragMode = null; // "pending" | "orbit" | "scroll"
+  let startPtrX = 0;
+  let startPtrY = 0;
+  let lastPtrX = 0;
+  let lastPtrY = 0;
+  let returningToScroll = false;
+
   let filmVisible = true;
   let rafId = 0;
   let modelLoaded = false;
+  let bakedReadyCount = 0;
 
-  toggle.textContent = playing ? "暂停画面" : "播放画面";
-  toggle.addEventListener("click", () => {
-    playing = !playing;
-    toggle.textContent = playing ? "暂停画面" : "播放画面";
-    if (playing) ensureLoop();
-  });
+  const beginSmoothReturn = () => {
+    if (isDragging) return;
+    if (Math.abs(userYaw) > 0.001 || Math.abs(userPitch) > 0.001 || Math.abs(velYaw) > 0.001 || Math.abs(velPitch) > 0.001) {
+      userYaw = wrapAnglePi(userYaw);
+      velYaw *= 0.2;
+      velPitch *= 0.2;
+      returningToScroll = true;
+      ensureLoop();
+    }
+  };
 
   const measureFilm = () => {
     filmStart = film.offsetTop;
     filmSpan = Math.max(1, film.offsetHeight - window.innerHeight);
     if (manualOverride === null) {
       targetProgress = clamp01((window.scrollY - filmStart) / filmSpan);
+      lastScrollTarget = targetProgress;
     }
   };
 
@@ -151,10 +186,7 @@ function setupStage() {
       film.style.removeProperty("--cinema-progress");
       shown = 0;
       targetProgress = 0;
-      if (reduced.matches) {
-        playing = false;
-        toggle.textContent = "播放画面";
-      }
+      lastScrollTarget = 0;
     } else {
       measureFilm();
     }
@@ -163,6 +195,7 @@ function setupStage() {
 
   const scrollToBeat = (beatIndex) => {
     const idx = Math.max(0, Math.min(BEAT_TARGETS.length - 1, beatIndex));
+    beginSmoothReturn();
     if (!cinemaAllowed()) {
       const targetEl = document.getElementById(BEAT_IDS[idx]);
       if (targetEl) targetEl.scrollIntoView({ behavior: reduced.matches ? "auto" : "smooth" });
@@ -193,7 +226,12 @@ function setupStage() {
     "scroll",
     () => {
       if (manualOverride !== null) return;
-      targetProgress = clamp01((window.scrollY - filmStart) / filmSpan);
+      const nextProgress = clamp01((window.scrollY - filmStart) / filmSpan);
+      if (Math.abs(nextProgress - lastScrollTarget) > 0.0004) {
+        beginSmoothReturn();
+        lastScrollTarget = nextProgress;
+      }
+      targetProgress = nextProgress;
       if (filmVisible) ensureLoop();
     },
     { passive: true }
@@ -203,18 +241,114 @@ function setupStage() {
   reduced.addEventListener("change", syncCinemaMode);
   shortViewport.addEventListener("change", syncCinemaMode);
 
-  frame.addEventListener("pointermove", (event) => {
-    if (!pointerQuery.matches) return;
-    if (event.pointerType !== "mouse" && event.pointerType !== "pen") return;
+  const updatePointerCoords = (event) => {
     const rect = frame.getBoundingClientRect();
-    const nx = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-    const ny = ((event.clientY - rect.top) / rect.height) * 2 - 1;
-    targetTiltY = nx * 0.1;
-    targetTiltX = -ny * 0.07;
+    const w = Math.max(rect.width, 1);
+    const h = Math.max(rect.height, 1);
+    ptrNx = Math.max(-1.2, Math.min(1.2, ((event.clientX - rect.left) / w) * 2 - 1));
+    ptrNy = Math.max(-1.2, Math.min(1.2, ((event.clientY - rect.top) / h) * 2 - 1));
+    if (pointerQuery.matches && !isDragging) {
+      targetTiltY = ptrNx * 0.1;
+      targetTiltX = -ptrNy * 0.07;
+    }
+  };
+
+  frame.addEventListener("pointerdown", (event) => {
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+    returningToScroll = false;
+    velYaw = 0;
+    velPitch = 0;
+    dragPointerId = event.pointerId;
+    startPtrX = event.clientX;
+    startPtrY = event.clientY;
+    lastPtrX = event.clientX;
+    lastPtrY = event.clientY;
+    hoverActive = true;
+    updatePointerCoords(event);
+
+    if (event.pointerType === "touch") {
+      dragMode = "pending";
+    } else {
+      dragMode = "orbit";
+      isDragging = true;
+      targetTiltX = 0;
+      targetTiltY = 0;
+      frame.classList.add("is-dragging");
+      try { frame.setPointerCapture(event.pointerId); } catch (_) {}
+      if (dragHint) dragHint.classList.add("is-faded");
+    }
+    ensureLoop();
   });
+
+  frame.addEventListener("pointermove", (event) => {
+    if (event.pointerType === "mouse" || event.pointerType === "pen") {
+      hoverActive = true;
+      updatePointerCoords(event);
+      ensureLoop();
+    }
+
+    if (dragPointerId !== event.pointerId) return;
+
+    if (dragMode === "pending") {
+      const totalDx = event.clientX - startPtrX;
+      const totalDy = event.clientY - startPtrY;
+      if (Math.hypot(totalDx, totalDy) < 7) return;
+      if (Math.abs(totalDx) >= Math.abs(totalDy) * 0.85) {
+        dragMode = "orbit";
+        isDragging = true;
+        targetTiltX = 0;
+        targetTiltY = 0;
+        frame.classList.add("is-dragging");
+        try { frame.setPointerCapture(event.pointerId); } catch (_) {}
+        if (dragHint) dragHint.classList.add("is-faded");
+        lastPtrX = event.clientX;
+        lastPtrY = event.clientY;
+      } else {
+        dragMode = "scroll";
+        return;
+      }
+    }
+
+    if (dragMode !== "orbit") return;
+
+    const dx = event.clientX - lastPtrX;
+    const dy = event.clientY - lastPtrY;
+    lastPtrX = event.clientX;
+    lastPtrY = event.clientY;
+
+    const size = Math.max(frame.clientWidth, 180);
+    const dYaw = (dx / size) * Math.PI * 1.95;
+    const dPitch = (dy / size) * Math.PI * 1.35;
+
+    userYaw += dYaw;
+    userPitch = Math.max(-1.42, Math.min(1.42, userPitch + dPitch));
+    velYaw = velYaw * 0.45 + dYaw * 0.55;
+    velPitch = velPitch * 0.45 + dPitch * 0.55;
+    ensureLoop();
+  });
+
+  const endOrbitDrag = (event) => {
+    if (dragPointerId !== event.pointerId) return;
+    if (isDragging) {
+      try { frame.releasePointerCapture(event.pointerId); } catch (_) {}
+    }
+    isDragging = false;
+    dragPointerId = null;
+    dragMode = null;
+    frame.classList.remove("is-dragging");
+    if (event.pointerType === "touch") hoverActive = false;
+    ensureLoop();
+  };
+
+  frame.addEventListener("pointerup", endOrbitDrag);
+  frame.addEventListener("pointercancel", endOrbitDrag);
   frame.addEventListener("pointerleave", () => {
-    targetTiltX = 0;
-    targetTiltY = 0;
+    if (!isDragging) {
+      hoverActive = false;
+      targetTiltX = 0;
+      targetTiltY = 0;
+      ensureLoop();
+    }
   });
 
   let renderer;
@@ -239,16 +373,26 @@ function setupStage() {
   const pmrem = new THREE.PMREMGenerator(renderer);
   scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
 
-  // Refined Apple-style studio key + rim lighting to articulate the CNC Satin Aluminium edge
-  const keyLight = new THREE.DirectionalLight(0xffffff, 0.9);
+  // Base Apple studio key + cool rim lighting for CNC Satin Aluminium housing
+  const keyLight = new THREE.DirectionalLight(0xffffff, 0.85);
   keyLight.position.set(0.35, 0.5, 0.6);
   scene.add(keyLight);
 
-  const rimLight = new THREE.DirectionalLight(0xc8deff, 0.65);
+  const rimLight = new THREE.DirectionalLight(0xc8deff, 0.55);
   rimLight.position.set(-0.55, 0.25, -0.3);
   scene.add(rimLight);
 
+  // Dynamic cursor-following specular studio lights (front + rear rim for 360° inspection)
+  const cursorLight = new THREE.PointLight(0xdbeeff, 0, 1.0, 1.5);
+  cursorLight.position.set(0, 0, 0.2);
+  scene.add(cursorLight);
+
+  const cursorBackRim = new THREE.PointLight(0xfff1e0, 0, 1.0, 1.6);
+  cursorBackRim.position.set(0, 0, -0.18);
+  scene.add(cursorBackRim);
+
   const rig = new THREE.Group();
+  rig.rotation.order = "YXZ";
   scene.add(rig);
 
   const screenCanvas = document.createElement("canvas");
@@ -271,6 +415,8 @@ function setupStage() {
     copy.height = 512;
     copy.getContext("2d").drawImage(image, 0, 0, 512, 512);
     baked[index] = copy;
+    bakedReadyCount += 1;
+    ensureLoop();
   };
   const watch = (image, index) => {
     if (image.complete && image.naturalWidth) bake(image, index);
@@ -320,6 +466,7 @@ function setupStage() {
         setOrbit(value) {
           manualOverride = clamp01(Number(value));
           targetProgress = manualOverride;
+          beginSmoothReturn();
           ensureLoop();
         },
         effect: () => effect,
@@ -363,7 +510,6 @@ function setupStage() {
   );
   visObserver.observe(film);
 
-  let clock = 0;
   let last = performance.now();
   let lastHeroOut = -1;
   let lastCinemaIn = -1;
@@ -391,13 +537,12 @@ function setupStage() {
     rafId = 0;
     if (document.hidden || !filmVisible) return;
 
-    const dt = Math.min(0.05, (now - last) / 1000);
+    const dt = Math.min(0.05, Math.max(0.001, (now - last) / 1000));
     last = now;
-    if (playing) clock += dt;
 
     const allowCinema = cinemaAllowed();
     const target = allowCinema ? targetProgress : 0;
-    const damping = allowCinema ? 0.1 : 1;
+    const damping = allowCinema ? 1 - Math.pow(0.0018, dt) : 1;
     shown += (target - shown) * damping;
     if (Math.abs(target - shown) < 0.0005) shown = target;
 
@@ -420,7 +565,6 @@ function setupStage() {
         lastCinemaProg = cinemaProg;
       }
 
-      // Nav & dock morph into dark OLED mode only while inside the dark cinema band
       const leavingBottom = window.scrollY > filmStart + filmSpan - window.innerHeight * 0.12;
       document.documentElement.classList.toggle("is-dark-beat", cinemaIn > 0.45 && !leavingBottom);
 
@@ -428,15 +572,61 @@ function setupStage() {
       setActiveBeat(beatIdx);
     }
 
-    // Subtle 3D hardware presentation angle + pointer tilt
-    const tiltOn = pointerQuery.matches && shown < 0.1;
-    tiltX += ((tiltOn ? targetTiltX : 0) - tiltX) * 0.12;
-    tiltY += ((tiltOn ? targetTiltY : 0) - tiltY) * 0.12;
+    // Release inertia or seamless shortest-arc return to scroll choreography
+    if (!isDragging) {
+      if (returningToScroll) {
+        const ret = Math.pow(0.05, dt);
+        userYaw *= ret;
+        userPitch *= ret;
+        velYaw *= ret;
+        velPitch *= ret;
+        if (Math.abs(userYaw) < 0.0008 && Math.abs(userPitch) < 0.0008) {
+          userYaw = 0;
+          userPitch = 0;
+          velYaw = 0;
+          velPitch = 0;
+          returningToScroll = false;
+        }
+      } else if (Math.abs(velYaw) > 0.0003 || Math.abs(velPitch) > 0.0003) {
+        const friction = Math.pow(0.012, dt);
+        userYaw += velYaw;
+        userPitch = Math.max(-1.42, Math.min(1.42, userPitch + velPitch));
+        velYaw *= friction;
+        velPitch *= friction;
+        if (Math.abs(velYaw) < 0.0003) velYaw = 0;
+        if (Math.abs(velPitch) < 0.0003) velPitch = 0;
+      }
+    }
+
+    // Responsive hover tilt + dynamic cursor studio lighting (works at all scroll stages)
+    const tiltOn = pointerQuery.matches && !isDragging && hoverActive;
+    const tiltLerp = 1 - Math.pow(0.0008, dt);
+    tiltX += ((tiltOn ? targetTiltX : 0) - tiltX) * tiltLerp;
+    tiltY += ((tiltOn ? targetTiltY : 0) - tiltY) * tiltLerp;
+
+    const targetLightIntensity = hoverActive || isDragging ? 2.6 : 0;
+    const lightLerp = 1 - Math.pow(0.0004, dt);
+    lightX += (ptrNx * 0.24 - lightX) * lightLerp;
+    lightY += (-ptrNy * 0.24 - lightY) * lightLerp;
+    lightIntensity += (targetLightIntensity - lightIntensity) * lightLerp;
+    if (Math.abs(targetLightIntensity - lightIntensity) < 0.008) lightIntensity = targetLightIntensity;
+
+    cursorLight.position.set(lightX, lightY, 0.22);
+    cursorLight.intensity = lightIntensity;
+    cursorBackRim.position.set(-lightX * 0.85, -lightY * 0.85, -0.18);
+    cursorBackRim.intensity = lightIntensity * 0.58;
+
+    if (glow) {
+      const boost = clamp01(lightIntensity / 2.6);
+      glow.style.setProperty("--glow-x", `${(50 + (lightX / 0.24) * 26).toFixed(1)}%`);
+      glow.style.setProperty("--glow-y", `${(50 - (lightY / 0.24) * 26).toFixed(1)}%`);
+      glow.style.setProperty("--glow-boost", boost.toFixed(3));
+    }
 
     const showcase = reduced.matches ? { x: 0, y: 0 } : hardwareAngleAt(shown);
-    rig.rotation.set(tiltX + showcase.x, tiltY + showcase.y, 0);
+    rig.rotation.set(showcase.x + userPitch + tiltX, showcase.y + userYaw + tiltY, 0);
 
-    effect = effectAt(shown, playing ? clock : 0);
+    effect = effectAt(shown);
     try {
       paintScreen(screenContext, effect);
       texture.needsUpdate = true;
@@ -446,11 +636,17 @@ function setupStage() {
     renderer.render(scene, camera);
 
     const settling =
+      isDragging ||
+      returningToScroll ||
       Math.abs(target - shown) > 0.0005 ||
+      Math.abs(velYaw) > 0.0003 ||
+      Math.abs(velPitch) > 0.0003 ||
       Math.abs((tiltOn ? targetTiltX : 0) - tiltX) > 0.0005 ||
-      Math.abs((tiltOn ? targetTiltY : 0) - tiltY) > 0.0005;
+      Math.abs((tiltOn ? targetTiltY : 0) - tiltY) > 0.0005 ||
+      Math.abs(targetLightIntensity - lightIntensity) > 0.01 ||
+      (hoverActive && (Math.abs(ptrNx * 0.24 - lightX) > 0.001 || Math.abs(-ptrNy * 0.24 - lightY) > 0.001));
 
-    if (playing || settling || !modelLoaded) {
+    if (settling || !modelLoaded || bakedReadyCount < 1) {
       rafId = requestAnimationFrame(loop);
     }
   }
@@ -509,11 +705,9 @@ function fadeBrightness(t) {
   return easeUnit((t - out) / (1 - out));
 }
 
-function effectAt(orbit, clock) {
-  // The device turns once in about 24s. Hero & spin beat turn slightly faster so motion and pause control stay clear.
-  const heroTurn = clock > 0 && orbit < 0.12 ? (clock % 14) / 14 : 0;
+function effectAt(orbit) {
   const hold = (name, index, turns = 0) => ({ name, index, turns, brightness: 1, dark: false, mode: "still" });
-  if (orbit < 0.30) return hold("place", 0, heroTurn);
+  if (orbit < 0.30) return hold("place", 0, 0);
   if (orbit < 0.45) {
     const t = clamp01((orbit - 0.30) / 0.15);
     const brightness = fadeBrightness(t);
@@ -557,9 +751,8 @@ function effectAt(orbit, clock) {
     };
   }
   if (orbit < 0.85) return hold("ripple", 3);
-  const spinScroll = clamp01((orbit - 0.85) / 0.15) * 0.25;
-  const spinIdle = clock > 0 ? (clock % 24) / 24 : 0;
-  return hold("spin", 3, spinScroll + spinIdle);
+  const spinScroll = clamp01((orbit - 0.85) / 0.15) * 0.42;
+  return hold("spin", 3, spinScroll);
 }
 
 function paintScreen(context, effect) {
