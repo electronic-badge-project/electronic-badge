@@ -6,8 +6,11 @@ on:
     paths:
       - 'docs/**'
       - '.github/workflows/pages.yml'
-  schedule:
-    - cron: '*/5 * * * *'
+  release:
+    types: [published]
+  workflow_run:
+    workflows: ['Firmware release']
+    types: [completed]
   workflow_dispatch:
 
 permissions: {}
@@ -18,6 +21,7 @@ concurrency:
 
 jobs:
   build:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -31,9 +35,10 @@ jobs:
         id: mirror
         env:
           PAGES_ORIGIN: https://electronic-badge-project.github.io/electronic-badge
+          REPOSITORY: ${{ github.repository }}
         run: |
           set -euo pipefail
-          release_base='https://github.com/ocean-sudo/electronic-badge/releases'
+          release_base="https://github.com/${REPOSITORY}/releases"
           release_fetch() {
             local output="$1" expected_status="$2" url="$release_base/$3"
             shift 3
@@ -72,13 +77,6 @@ jobs:
             exit 1
           fi
           expected_sha="$(printf '%s' "$manifest_line" | cut -c1-64 | tr '[:upper:]' '[:lower:]')"
-          if [[ "$GITHUB_EVENT_NAME" == schedule ]] && curl -fsSL "$PAGES_ORIGIN/console/firmware/current.json?ts=$(date +%s)" -o "$RUNNER_TEMP/current.json"; then
-            if jq -e --arg tag "$tag" --arg sha "$expected_sha" '.tag_name == $tag and .sha256 == $sha' "$RUNNER_TEMP/current.json" >/dev/null; then
-              echo 'deploy=false' >> "$GITHUB_OUTPUT"
-              echo "Pages already serves $tag ($expected_sha); skipping deployment."
-              exit 0
-            fi
-          fi
           target="docs/console/firmware/$tag"
           mkdir -p "$target"
           release_fetch "$target/firmware.bin" 200 "download/$tag/firmware.bin" --location --max-filesize 3145728

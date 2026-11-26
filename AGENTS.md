@@ -13,7 +13,7 @@ USB picture badge for the Waveshare ESP32-S3-Touch-AMOLED-1.75C. Firmware owns s
 ## Key Directories
 
 - `src/`: Arduino runtime, hardware adapters, and host-testable C++ logic.
-- `docs/`: Pages staging tree; `docs/console/` is the only console source. `web/index.html` is a legacy redirect. Production Pages requires reviewed sync to the separate hosting repository.
+- `docs/`: GitHub Pages site source deployed by `.github/workflows/pages.yml`; `docs/console/` is the only console source. `web/index.html` is a legacy redirect.
 - `tests/`: host tests and embedded API substitutes in `tests/host_stubs/`. `vendor/waveshare/` is an ignored upstream checkout; `backups/` and `verification/` are local artifacts, not fixtures.
 
 ## Development Commands
@@ -34,7 +34,7 @@ USB picture badge for the Waveshare ESP32-S3-Touch-AMOLED-1.75C. Firmware owns s
 - `src/jpeg_image.h` and `src/jpeg_decoder.h`: stored-image integrity and ESP32-S3 ROM JPEG decoding.
 - `src/picture_player.h`, `src/picture_animation.h`, and `src/animation_renderer.cpp`: selection/history, PSRAM frame lifecycle, and pixel transforms.
 - `docs/console/index.html`: UI and application serial protocol. `docs/console/firmware_update.mjs`: separate ROM-mode updater validation and APP-only write options; keep bounds aligned with `partitions.csv`.
-- `platformio.ini`: board/build settings. `.github/workflows/release-firmware.yml`: stable-tag builds and release assets, not PR tests or Pages deployment.
+- `platformio.ini`: board/build settings. `.github/workflows/release-firmware.yml`: stable-tag builds and release assets; `.github/workflows/pages.yml`: deploys `docs/` and mirrors latest stable release assets to GitHub Pages on `docs/**` pushes, releases, or `Firmware release` completion.
 
 ## Runtime/Tooling Preferences
 

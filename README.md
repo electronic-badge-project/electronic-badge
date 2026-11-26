@@ -35,7 +35,7 @@
 
 ### 浏览器固件更新（仅 APP 分区）
 
-云端方式：在控制台点击“获取最新稳定版固件”，页面从固定仓库 `ocean-sudo/electronic-badge` 查询 GitHub latest Release 元数据，并从同源 GitHub Pages 镜像将 `firmware.bin` 和 `SHA256SUMS` 下载到浏览器内存；Pages 工作流每 5 分钟检查并同步最新稳定版。页面显示 Release tag 和 SHA-256；校验清单、固件字节及 ESP32-S3 镜像 / APP 大小边界均通过后，才启用现有 APP-only 刷写按钮。不会将 .bin 保存到本机，也不会自动刷写设备。SHA-256 清单用于检测字节完整性，不是签名或来源真实性证明；只在信任固定仓库及其维护者时使用。Release 刚发布后 Pages 镜像可能需等待下一次自动同步；缺少同源资产时页面会拒绝使用而不会绕过校验。若 Release 元数据网络访问或校验失败，可选择从已审查源码自行构建的本机 `firmware.bin`。
+云端方式：在控制台点击“获取最新稳定版固件”，页面从固定仓库 `electronic-badge-project/electronic-badge` 查询 GitHub latest Release 元数据，并从同源 GitHub Pages 镜像将 `firmware.bin` 和 `SHA256SUMS` 下载到浏览器内存；发布新稳定版 Release 后由 Pages 工作流自动镜像更新。页面显示 Release tag 和 SHA-256；校验清单、固件字节及 ESP32-S3 镜像 / APP 大小边界均通过后，才启用现有 APP-only 刷写按钮。不会将 .bin 保存到本机，也不会自动刷写设备。SHA-256 清单用于检测字节完整性，不是签名或来源真实性证明；只在信任固定仓库及其维护者时使用。Release 刚发布后 Pages 镜像可能需等待部署工作流完成；缺少同源资产时页面会拒绝使用而不会绕过校验。若 Release 元数据网络访问或校验失败，可选择从已审查源码自行构建的本机 `firmware.bin`。
 
 断开普通控制连接后，按住 BOOT、按下并释放 RESET/EN，再松开 BOOT，手动进入 ESP32-S3 ROM 下载模式；在页面勾选“已进入 ROM 下载模式”和“确认覆盖 APP”后再刷写。页面使用固定版本 esptool-js 0.7.0 / Web Serial，以 no_reset 连接，只将单个应用镜像写入 0x10000，最大 0x300000 字节（应用分区结束 0x310000），并显式设置 eraseAll=false。这不是首次空白设备的初始化流程，不写 bootloader、分区表、NVS 或 LittleFS；安全启动、闪存加密或禁用 ROM 下载模式的设备不保证可用。刷写结束由用户松开 BOOT 并按 RESET/EN，然后点击页面重新连接并读取 STATUS。页面不会尝试自动切换原生 USB 到 ROM 模式。
 此分区表只有一个 `factory` APP 分区，没有 OTA 备用槽或自动回滚。刷写会覆盖唯一可启动应用；刷写期间断电、USB 断连、传输错误或镜像不兼容可能使设备无法启动。恢复可能需要重新手动进入 ROM 下载模式并用正确固件重刷；不要把此功能当作安全的 OTA 更新，也不要在重要/生产设备上试验未知镜像。虽然 `eraseAll=false` 且地址范围排除 LittleFS，esptool 仍须擦除待写 APP 扇区。
@@ -86,7 +86,7 @@ python -m esptool --chip esp32s3 --port /dev/ttyACM0 --baud 921600 write-flash 0
 ```
 
 APP-only 刷写不会改写 LittleFS、NVS、bootloader 或分区表。已有设备升级禁止使用 PlatformIO 整体 upload、uploadfs、整片擦除，或用旧整片镜像覆盖当前设备。固件以 `LittleFS.begin(false)` 挂载，不会自动格式化；不要以格式化来排查挂载问题。
-也可用浏览器控制台替代上述命令更新已有设备 APP：点击“获取最新稳定版固件”从固定仓库取得并校验 Release；或在网络不可用 / Release 获取失败时选择本机 `.pio/build/picture-badge/firmware.bin`。云端和本机固件都使用同一镜像检查和刷写流程。SHA-256 不是来源真实性认证；确认信任 `ocean-sudo/electronic-badge` 后再继续。断开普通控制连接后，按住 BOOT、按下并释放 RESET/EN、再松开 BOOT，手动进入 ESP32-S3 ROM 下载模式；勾选页面的 ROM 模式及覆盖 APP 确认后点击“仅写入 APP 固件”。下载不会保存为本地文件；页面不会自动刷写，也没有云端中继或远程设备刷写。完成后松开 BOOT、按 RESET/EN 启动，再在页面重新连接并读取 STATUS。
+也可用浏览器控制台替代上述命令更新已有设备 APP：点击“获取最新稳定版固件”从固定仓库取得并校验 Release；或在网络不可用 / Release 获取失败时选择本机 `.pio/build/picture-badge/firmware.bin`。云端和本机固件都使用同一镜像检查和刷写流程。SHA-256 不是来源真实性认证；确认信任 `electronic-badge-project/electronic-badge` 后再继续。断开普通控制连接后，按住 BOOT、按下并释放 RESET/EN、再松开 BOOT，手动进入 ESP32-S3 ROM 下载模式；勾选页面的 ROM 模式及覆盖 APP 确认后点击“仅写入 APP 固件”。下载不会保存为本地文件；页面不会自动刷写，也没有云端中继或远程设备刷写。完成后松开 BOOT、按 RESET/EN 启动，再在页面重新连接并读取 STATUS。
 仅在启动刷写时，页面才需要联网从 `unpkg.com` 加载固定版本 `esptool-js 0.7.0` JavaScript 模块；远端代码会在页面内执行。只对你信任的页面及其外部依赖授权串口。本流程不会将固件或照片上传到 unpkg。
 这仍会覆盖唯一的 `factory` APP 分区；没有 OTA 备用槽或自动回滚。刷写中断电、断连、传输失败或镜像不兼容可能使设备无法启动；恢复时重新进入 ROM 下载模式并使用确认正确的 APP 固件重刷。`eraseAll=false` 只表示不请求整片擦除；esptool 仍会擦除正在写入的 APP 扇区。刷写目标范围不含 LittleFS、NVS、bootloader 或分区表；不要将此流程用于首次空白设备初始化。
 
@@ -108,8 +108,8 @@ APP-only 刷写不会改写 LittleFS、NVS、bootloader 或分区表。已有设
 只有我明确确认是全新空白设备后，才解释首次标准 upload 及 uploadfs 文件系统初始化；初始化不能混入现有设备升级步骤。控制台必须保持纯 HTTPS 静态 Web Serial 页面，不增加 PWA、原生助手、公网隧道或串口桥。无法确认硬件、分区、串口或数据状态时先停下询问，不执行破坏性操作。
 ```
 
-## GitHub Pages 与人工同步
+## GitHub Pages 自动部署
 
-生产 Pages <https://electronic-badge-project.github.io/electronic-badge/> 由独立组织仓库 [electronic-badge-project/electronic-badge](https://github.com/electronic-badge-project/electronic-badge) 托管。**提交本源码仓库不会自动部署生产 Pages。** 本仓库 `docs/` 是待审核、可整体人工同步的 Pages 内容；其中 `docs/console/index.html` 是控制台唯一源码和生产入口，介绍页使用相对链接 `console/`，同步后仍位于同一项目 Pages 路径。发布者必须审核后把 `docs/` 内容人工同步到独立仓库并由其部署流程发布。
+生产 Pages <https://electronic-badge-project.github.io/electronic-badge/> 直接由本仓库 [electronic-badge-project/electronic-badge](https://github.com/electronic-badge-project/electronic-badge) 的 `.github/workflows/pages.yml` 部署。推送 `docs/**` 或 `.github/workflows/pages.yml` 到 `main`、通过 `Firmware release` 工作流发布稳定版固件，或手动发布 Release 时，会自动将 `docs/` 与最新稳定版固件镜像发布到 GitHub Pages；其中 `docs/console/index.html` 是控制台唯一源码和生产入口，介绍页使用相对链接 `console/`。
 
-`web/index.html` 仅把源码仓库中的旧入口重定向到 `docs/console/`，不复制控制台逻辑，也不是生产 Pages 所依赖的路径。源码目录：`src/`（固件）、`docs/console/`（Web Serial 控制台）、`docs/`（可同步 Pages 内容）及 `tests/`（原生逻辑测试）。英文补充介绍：[readme_en.md](readme_en.md)。
+`web/index.html` 仅把源码仓库中的旧入口重定向到 `docs/console/`，不复制控制台逻辑，也不是生产 Pages 所依赖的路径。源码目录：`src/`（固件）、`docs/console/`（Web Serial 控制台）、`docs/`（Pages 站点源码）及 `tests/`（原生逻辑测试）。英文补充介绍：[readme_en.md](readme_en.md)。
