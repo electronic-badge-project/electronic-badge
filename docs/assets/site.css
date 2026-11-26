@@ -1100,8 +1100,10 @@ html.is-dark-beat .site-header .nav-cta:hover { background: #409cff; }
 }
 
 .mini-badge {
+  flex: 0 0 auto;
   inline-size: min(100%, 11.5rem);
-  aspect-ratio: 1;
+  block-size: auto;
+  aspect-ratio: 1 / 1;
   padding: 0.55rem;
   border-radius: 50%;
   background: linear-gradient(145deg, #2c2c2e, #111113);
@@ -1111,8 +1113,10 @@ html.is-dark-beat .site-header .nav-cta:hover { background: #409cff; }
     0 18px 36px rgb(0 0 0 / 0.16);
 }
 .mini-badge img {
+  display: block;
   inline-size: 100%;
-  block-size: 100%;
+  block-size: auto;
+  aspect-ratio: 1 / 1;
   border-radius: 50%;
   object-fit: cover;
 }
@@ -1386,8 +1390,10 @@ html.is-dark-beat .site-header .nav-cta:hover { background: #409cff; }
 
 .inspector-bezel {
   position: relative;
+  flex: 0 0 auto;
   inline-size: min(100%, 13.75rem);
-  aspect-ratio: 1;
+  block-size: auto;
+  aspect-ratio: 1 / 1;
   padding: 0.65rem;
   border-radius: 50%;
   background: linear-gradient(145deg, #3a3a3d 0%, #1c1c1e 48%, #0e0e10 100%);
@@ -1399,8 +1405,10 @@ html.is-dark-beat .site-header .nav-cta:hover { background: #409cff; }
 }
 
 .inspector-bezel canvas {
+  display: block;
   inline-size: 100%;
-  block-size: 100%;
+  block-size: auto;
+  aspect-ratio: 1 / 1;
   border-radius: 50%;
   background: #000000;
 }
