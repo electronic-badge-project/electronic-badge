@@ -65,6 +65,14 @@
   --ok-wash-dark: rgb(48 209 88 / 0.15);
   --ok-line-light: rgb(52 199 89 / 0.32);
   --ok-line-dark: rgb(48 209 88 / 0.38);
+  --warn-light: #9a5b00;
+  --warn-dark: #ffd60a;
+  --warn-text-light: #5c3700;
+  --warn-text-dark: #fef3c7;
+  --warn-wash-light: #fffbeb;
+  --warn-wash-dark: rgb(255 214 10 / 0.13);
+  --warn-line-light: #f59e0b;
+  --warn-line-dark: rgb(255 214 10 / 0.45);
   --shadow-card-light: 0 1px 2px rgb(0 0 0 / 0.03), 0 8px 24px rgb(0 0 0 / 0.04);
   --shadow-card-dark: 0 0 0 0.5px rgb(255 255 255 / 0.06);
 
@@ -94,6 +102,10 @@
   --ok-solid: var(--ok-solid-light);
   --ok-wash: var(--ok-wash-light);
   --ok-line: var(--ok-line-light);
+  --warn: var(--warn-light);
+  --warn-text: var(--warn-text-light);
+  --warn-wash: var(--warn-wash-light);
+  --warn-line: var(--warn-line-light);
   --shadow-card: var(--shadow-card-light);
   --blue: var(--accent-light);
 
@@ -124,6 +136,10 @@
     --ok-solid: var(--ok-solid-dark);
     --ok-wash: var(--ok-wash-dark);
     --ok-line: var(--ok-line-dark);
+    --warn: var(--warn-dark);
+    --warn-text: var(--warn-text-dark);
+    --warn-wash: var(--warn-wash-dark);
+    --warn-line: var(--warn-line-dark);
     --shadow-card: var(--shadow-card-dark);
     --blue: var(--accent-dark);
   }
@@ -154,6 +170,10 @@
     --ok-solid: light-dark(var(--ok-solid-light), var(--ok-solid-dark));
     --ok-wash: light-dark(var(--ok-wash-light), var(--ok-wash-dark));
     --ok-line: light-dark(var(--ok-line-light), var(--ok-line-dark));
+    --warn: light-dark(var(--warn-light), var(--warn-dark));
+    --warn-text: light-dark(var(--warn-text-light), var(--warn-text-dark));
+    --warn-wash: light-dark(var(--warn-wash-light), var(--warn-wash-dark));
+    --warn-line: light-dark(var(--warn-line-light), var(--warn-line-dark));
     --blue: light-dark(var(--accent-light), var(--accent-dark));
   }
   color-scheme: light dark;
@@ -326,6 +346,42 @@ code {
 .jump a[aria-current="true"] svg {
   color: var(--accent);
   opacity: 1;
+}
+
+.compat-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin: 0 0 14px;
+  padding: 13px 16px;
+  border: 1.5px solid var(--warn-line);
+  border-radius: 16px;
+  background: var(--warn-wash);
+  color: var(--warn-text);
+  font-size: 13px;
+  line-height: 1.58;
+}
+.compat-icon {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  margin-top: 1px;
+  color: var(--warn);
+}
+.compat-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.compat-body strong {
+  color: var(--warn);
+  font-size: 13.5px;
+  font-weight: 650;
+}
+.compat-body p {
+  margin: 0;
+  color: var(--warn-text);
 }
 
 .serial-notice {
@@ -1004,8 +1060,12 @@ footer {
     --ok-solid: CanvasText;
     --ok-wash: Canvas;
     --ok-line: CanvasText;
+    --warn: CanvasText;
+    --warn-text: CanvasText;
+    --warn-wash: Canvas;
+    --warn-line: CanvasText;
   }
-  button, .filebox, .card, .circle, .saved-preview, .crop-editor-stage, .device-dock {
+  button, .filebox, .card, .circle, .saved-preview, .crop-editor-stage, .device-dock, .compat-banner {
     border: 1px solid ButtonText;
   }
   .slideshow-config input[type=checkbox] {
@@ -1061,6 +1121,17 @@ footer {
 </aside>
 
 <main class="shell">
+<div id="compatBanner" class="compat-banner" role="alert" hidden>
+  <svg class="compat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+    <line x1="12" y1="9" x2="12" y2="13"/>
+    <circle cx="12" cy="17" r="0.9" fill="currentColor" stroke="none"/>
+  </svg>
+  <div class="compat-body">
+    <strong id="compatTitle">当前浏览器暂不支持连接徽章硬件</strong>
+    <p id="compatDetail"></p>
+  </div>
+</div>
 <aside class="serial-notice">
   <p><strong>本地直连：</strong>裁切与编码仅在本机浏览器完成，绝不上传云端；点击“连接徽章”由你手动挑选串口。</p>
   <details class="note">
@@ -2672,7 +2743,25 @@ if (serialSupported) {
     });
   });
 } else {
-  $('serialSupport').textContent='当前浏览器不支持 Web Serial 或 WebUSB（iOS Safari / WebKit 暂未开放 USB 接口）。请改用桌面 Chromium / Firefox 151+ 或 Android Chrome，并通过 HTTPS 打开本页。';
+  const ua = navigator.userAgent || '';
+  const isIos = /iPhone|iPad|iPod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const isSafari = /Safari/i.test(ua) && !/Chrome|Chromium|CriOS|Edg|EdgA|EdgiOS|FxiOS|Firefox|OPR|Android/i.test(ua);
+  let compatTitle = '当前浏览器暂不支持连接徽章硬件';
+  let compatDetail = '未检测到可用的 Web Serial 或 WebUSB 接口，无法通过 USB 连接设备。请改用电脑端 Chrome / Edge / Firefox 151+，或 Android 手机的 Chrome / Edge 浏览器通过 HTTPS 打开本页（本页仍可离线试裁图片）。';
+  if (!window.isSecureContext) {
+    compatTitle = '当前不是 HTTPS 安全页面，浏览器禁止访问 USB 接口';
+    compatDetail = '请改用电脑端 Chrome / Edge / Firefox 151+，或 Android 手机 Chrome 通过 HTTPS 打开本页后再连接徽章（离线裁图仍可试用）。';
+  } else if (isIos) {
+    compatTitle = 'iOS / iPadOS（Safari / WebKit）暂不支持连接徽章';
+    compatDetail = '苹果移动系统上的所有浏览器均未开放 Web Serial / WebUSB 接口，无法直连硬件。请改用电脑端 Chrome / Edge / Firefox 151+，或使用 Android 手机的 Chrome / Edge 浏览器打开本页（本页仍可离线试裁图片）。';
+  } else if (isSafari) {
+    compatTitle = 'Safari 浏览器暂不支持连接徽章硬件';
+    compatDetail = 'Safari 未开放 Web Serial / WebUSB 接口，无法通过 USB 连接设备。请切换到电脑端 Chrome / Edge / Firefox 151+，或使用 Android 手机的 Chrome 浏览器打开本页（本页仍可离线试裁图片）。';
+  }
+  $('compatTitle').textContent = compatTitle;
+  $('compatDetail').textContent = compatDetail;
+  $('compatBanner').hidden = false;
+  $('serialSupport').textContent = '';
 }
 window.addEventListener('pagehide',()=>{ void badgeSerial.close(); });
 async function poll() {

@@ -486,7 +486,7 @@ html.is-dark-beat .site-header .nav-cta:hover { background: #409cff; }
 
 .stage-frame {
   position: relative;
-  inline-size: min(74vw, 23rem, 42dvh);
+  inline-size: min(82vw, 23rem, 44dvh);
   aspect-ratio: 1;
   cursor: grab;
   touch-action: pan-y;
@@ -740,14 +740,14 @@ html.is-dark-beat .site-header .nav-cta:hover { background: #409cff; }
      while cinema-copy fades into lower-center without ever displacing stage at p=0. */
   html.is-cinema-ready .stage {
     translate: 0 calc(
-      (1 - var(--cinema-in, 0)) * clamp(3.25rem, 9.5dvh, 5.25rem) +
-      var(--cinema-in, 0) * clamp(-6.25rem, -13dvh, -4.25rem)
+      (1 - var(--cinema-in, 0)) * clamp(3.75rem, 10dvh, 5.5rem) +
+      var(--cinema-in, 0) * clamp(-9.25rem, -16dvh, -6.5rem)
     );
   }
 
   html.is-cinema-ready .stage-frame {
-    inline-size: min(62vw, 19rem, 34dvh);
-    scale: calc(1 + var(--cinema-in, 0) * 0.06);
+    inline-size: min(80vw, 21.5rem, 40dvh);
+    scale: calc(1 + var(--cinema-in, 0) * 0.05);
   }
 
   html.is-cinema-ready .cinema-copy {
@@ -758,7 +758,7 @@ html.is-dark-beat .site-header .nav-cta:hover { background: #409cff; }
     margin-block-start: 0;
     text-align: center;
     opacity: var(--cinema-in, 0);
-    translate: 0 calc(clamp(6.75rem, 15.5dvh, 8.75rem) + (1 - var(--cinema-in, 0)) * 16px);
+    translate: 0 calc(clamp(8.5rem, 18.5dvh, 10.75rem) + (1 - var(--cinema-in, 0)) * 16px);
     pointer-events: none;
   }
 
