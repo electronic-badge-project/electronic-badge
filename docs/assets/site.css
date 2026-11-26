@@ -719,25 +719,43 @@ html.is-dark-beat .site-header .nav-cta:hover { background: #409cff; }
   }
 
   html.is-cinema-ready .cinema-layout {
+    display: grid;
+    grid-template-columns: 1fr;
+    align-items: center;
+    justify-items: center;
     align-self: center;
-    translate: 0 calc((1 - var(--cinema-in, 0)) * clamp(4rem, 10dvh, 6.25rem));
     padding-block: 0;
   }
 
+  html.is-cinema-ready .stage,
+  html.is-cinema-ready .cinema-copy {
+    grid-row: 1;
+    grid-column: 1;
+  }
+
+  /* Mobile & tablet portrait: stage glides from below hero-copy to upper-center,
+     while cinema-copy fades into lower-center without ever displacing stage at p=0. */
+  html.is-cinema-ready .stage {
+    translate: 0 calc(
+      (1 - var(--cinema-in, 0)) * clamp(3.25rem, 9.5dvh, 5.25rem) +
+      var(--cinema-in, 0) * clamp(-6.25rem, -13dvh, -4.25rem)
+    );
+  }
+
   html.is-cinema-ready .stage-frame {
-    inline-size: min(70vw, 22rem, 38dvh);
-    scale: calc(1 + var(--cinema-in, 0) * 0.08);
+    inline-size: min(62vw, 19rem, 34dvh);
+    scale: calc(1 + var(--cinema-in, 0) * 0.06);
   }
 
   html.is-cinema-ready .cinema-copy {
     display: grid;
     grid-template-areas: "cap";
     position: relative;
-    inline-size: min(100%, 26rem);
-    min-block-size: 8.25rem;
-    margin-block-start: 1.15rem;
+    inline-size: min(100%, 24rem);
+    margin-block-start: 0;
     text-align: center;
     opacity: var(--cinema-in, 0);
+    translate: 0 calc(clamp(6.75rem, 15.5dvh, 8.75rem) + (1 - var(--cinema-in, 0)) * 16px);
     pointer-events: none;
   }
 
@@ -901,20 +919,11 @@ html.is-dark-beat .site-header .nav-cta:hover { background: #409cff; }
 
   /* Desktop split-stage cinema composition */
   @media (min-width: 56rem) {
-    html.is-cinema-ready .cinema-layout {
-      display: grid;
-      grid-template-columns: 1fr;
-      align-items: center;
-      justify-items: center;
-    }
-    html.is-cinema-ready .stage,
-    html.is-cinema-ready .cinema-copy {
-      grid-row: 1;
-      grid-column: 1;
-    }
     html.is-cinema-ready .stage {
       inline-size: auto;
-      translate: calc(var(--cinema-in, 0) * clamp(-15rem, -18vw, -10.5rem)) 0;
+      translate:
+        calc(var(--cinema-in, 0) * clamp(-15rem, -18vw, -10.5rem))
+        calc((1 - var(--cinema-in, 0)) * clamp(4rem, 9.5dvh, 6rem));
     }
     html.is-cinema-ready .stage-frame {
       inline-size: min(26rem, 44dvh);
@@ -1714,6 +1723,20 @@ html.is-dark-beat .site-header .nav-cta:hover { background: #409cff; }
 }
 
 @media (max-width: 38rem) {
+  .eyebrow { font-size: 0.78rem; margin-block-end: 0.35rem; }
+  .hero-copy h1 { font-size: clamp(2.15rem, 8.5vw, 3rem); }
+  .tagline { margin-block-start: 0.4rem; font-size: 1.125rem; }
+  .hero-sub { font-size: 0.875rem; }
+  .hero-actions { margin-block-start: 0.85rem; gap: 0.45rem 1.15rem; }
+  .cap-title { font-size: clamp(1.3rem, 5.2vw, 1.65rem); }
+  .cap-body { font-size: 0.84rem; line-height: 1.48; margin-block-start: 0.35rem; }
+  .cap-meta { margin-block-start: 0.5rem; gap: 0.35rem; }
+  .cinema-dock { max-inline-size: calc(100vw - 1.5rem); padding: 0.3rem 0.35rem 0.4rem; }
+  .chapter-pills { gap: 0.1rem; }
+  .chapter-pill { padding-inline: 0.58rem; font-size: 0.75rem; min-block-size: 2.1rem; }
+  .foot-controls { gap: 0.35rem 0.75rem; }
+  .demo-credit { font-size: 0.6875rem; }
+
   .bento { grid-template-columns: 1fr; }
   .bento-hero,
   .bento-wide,
@@ -1722,11 +1745,18 @@ html.is-dark-beat .site-header .nav-cta:hover { background: #409cff; }
   .bento-hero,
   .bento-wide { grid-template-columns: 1fr; }
   .mini-badge { inline-size: 9rem; }
-  .studio-titlebar { grid-template-columns: auto 1fr; }
+
+  .studio-titlebar { grid-template-columns: auto 1fr; padding-inline: 0.9rem; }
   .studio-open-btn { display: none; }
+  .studio-canvas-wrap { min-block-size: 16.5rem; padding: 0.75rem; }
+  .studio-toolbar { padding: 0.75rem 0.9rem 0.95rem; gap: 0.65rem; }
+  .studio-zoom-control { inline-size: 100%; justify-content: space-between; }
+  .studio-zoom-control input[type="range"] { flex: 1 1 auto; inline-size: auto; }
+  .studio-inspector { padding: 1.15rem 1rem 1.25rem; }
+  .inspector-bezel { inline-size: min(100%, 11.75rem); }
+
   .specs-grid { grid-template-columns: 1fr; }
   .footer-nav { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .chapter-pill { padding-inline: 0.6rem; font-size: 0.75rem; }
 }
 
 @media (prefers-color-scheme: dark) {

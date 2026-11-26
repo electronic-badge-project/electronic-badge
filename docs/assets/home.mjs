@@ -3,6 +3,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 
 const reduced = matchMedia("(prefers-reduced-motion: reduce)");
+const shortViewport = matchMedia("(max-height: 520px)");
 
 setupNav();
 setupScrollFrost();
@@ -138,8 +139,10 @@ function setupStage() {
     }
   };
 
+  const cinemaAllowed = () => !reduced.matches && !shortViewport.matches;
+
   const syncCinemaMode = () => {
-    const enabled = !reduced.matches;
+    const enabled = cinemaAllowed();
     document.documentElement.classList.toggle("is-cinema-ready", enabled);
     if (!enabled) {
       document.documentElement.classList.remove("is-dark-beat", "is-hero-hidden");
@@ -148,8 +151,10 @@ function setupStage() {
       film.style.removeProperty("--cinema-progress");
       shown = 0;
       targetProgress = 0;
-      playing = false;
-      toggle.textContent = "播放画面";
+      if (reduced.matches) {
+        playing = false;
+        toggle.textContent = "播放画面";
+      }
     } else {
       measureFilm();
     }
@@ -158,9 +163,9 @@ function setupStage() {
 
   const scrollToBeat = (beatIndex) => {
     const idx = Math.max(0, Math.min(BEAT_TARGETS.length - 1, beatIndex));
-    if (reduced.matches) {
+    if (!cinemaAllowed()) {
       const targetEl = document.getElementById(BEAT_IDS[idx]);
-      if (targetEl) targetEl.scrollIntoView({ behavior: "auto" });
+      if (targetEl) targetEl.scrollIntoView({ behavior: reduced.matches ? "auto" : "smooth" });
       return;
     }
     measureFilm();
@@ -176,7 +181,7 @@ function setupStage() {
 
   document.addEventListener("click", (event) => {
     const anchor = event.target.closest('a[href^="#"]');
-    if (!anchor || reduced.matches) return;
+    if (!anchor || !cinemaAllowed()) return;
     const id = anchor.getAttribute("href").slice(1);
     const beatIndex = BEAT_IDS.indexOf(id);
     if (beatIndex === -1) return;
@@ -196,6 +201,7 @@ function setupStage() {
 
   window.addEventListener("resize", measureFilm, { passive: true });
   reduced.addEventListener("change", syncCinemaMode);
+  shortViewport.addEventListener("change", syncCinemaMode);
 
   frame.addEventListener("pointermove", (event) => {
     if (!pointerQuery.matches) return;
@@ -389,12 +395,13 @@ function setupStage() {
     last = now;
     if (playing) clock += dt;
 
-    const target = reduced.matches ? 0 : targetProgress;
-    const damping = reduced.matches ? 1 : 0.1;
+    const allowCinema = cinemaAllowed();
+    const target = allowCinema ? targetProgress : 0;
+    const damping = allowCinema ? 0.1 : 1;
     shown += (target - shown) * damping;
     if (Math.abs(target - shown) < 0.0005) shown = target;
 
-    if (!reduced.matches) {
+    if (allowCinema) {
       const heroOut = mapRange(shown, 0.015, 0.13, 0, 1);
       const cinemaIn = mapRange(shown, 0.05, 0.18, 0, 1);
       const cinemaProg = mapRange(shown, 0.16, 0.98, 0, 1);
