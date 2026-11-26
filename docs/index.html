@@ -7,7 +7,7 @@
   <meta name="color-scheme" content="light dark">
   <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
-  <meta name="description" content="USB 图片徽章把一张图放进圆屏。换图有黑场淡变、水平推入和径向涟漪，放着则会慢慢转动。">
+  <meta name="description" content="面向 Waveshare ESP32-S3-Touch-AMOLED-1.75C 的 USB 图片徽章。浏览器本地裁切，Web Serial 直连写入，原生黑场淡变、水平推入、径向涟漪与缓慢旋转。">
   <title>USB 图片徽章</title>
   <link rel="icon" href="assets/mark.svg" type="image/svg+xml">
   <link rel="stylesheet" href="assets/site.css">
@@ -15,11 +15,15 @@
 <body>
   <a class="skip" href="#top">跳到正文</a>
   <div class="scroll-sentinel" aria-hidden="true"></div>
+
   <header class="site-header">
     <div class="header-inner">
       <a class="brand" href="#top">
-        <svg class="logo" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="11" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="16" cy="16" r="4.5" fill="currentColor"/></svg>
-        USB 图片徽章
+        <svg class="logo" viewBox="0 0 32 32" aria-hidden="true">
+          <circle cx="16" cy="16" r="11" fill="none" stroke="currentColor" stroke-width="1.75"/>
+          <circle cx="16" cy="16" r="4.25" fill="currentColor"/>
+        </svg>
+        <span>USB 图片徽章</span>
       </a>
       <nav class="site-nav" aria-label="主导航">
         <button class="menu-button" type="button" popovertarget="site-menu" popovertargetaction="toggle" aria-controls="site-menu">
@@ -27,158 +31,358 @@
         </button>
         <ul id="site-menu" class="site-menu" popover="auto">
           <li><a href="#place">放图</a></li>
-          <li><a href="#fade">黑场</a></li>
-          <li><a href="#slide">推入</a></li>
-          <li><a href="#ripple">涟漪</a></li>
-          <li><a href="#spin">转动</a></li>
+          <li><a href="#fade">动效</a></li>
+          <li><a href="#highlights">亮点</a></li>
+          <li><a href="#console">控制台</a></li>
+          <li><a href="#specs">规格</a></li>
+          <li><a href="#notes">细节</a></li>
         </ul>
       </nav>
-      <a class="link nav-link" href="console/">打开控制台 ›</a>
+      <a class="nav-cta" href="console/">打开控制台</a>
     </div>
   </header>
 
   <main id="top">
-    <section class="film" id="film">
+    <section class="film" id="film" aria-label="产品概览与屏显动效演示">
       <div class="scene">
         <div class="veil" aria-hidden="true"></div>
+
         <div class="hero-copy">
+          <p class="eyebrow">ESP32-S3 · 1.75 英寸圆形 AMOLED · Web Serial</p>
           <h1>USB 图片徽章</h1>
-          <p class="tagline">一张图放进圆屏。换法，和放着怎么动，都在这块屏上。</p>
+          <p class="tagline">把喜欢的画面，点亮在掌心圆屏。</p>
+          <p class="hero-sub">浏览器本地裁切，USB 直连写入。离机独立轮播，四种原生切换动效。</p>
           <div class="hero-actions">
             <a class="pill" href="console/">打开控制台</a>
-            <a class="link" href="#place">看换图 ›</a>
+            <a class="link" href="#fade">观看屏显演示 ›</a>
           </div>
         </div>
-        <div class="stage">
-          <div class="stage-frame">
-            <div class="stage-shadow" aria-hidden="true"></div>
-            <div class="stage-view">
-              <canvas id="badge-stage" aria-label="圆形屏幕上正在演示换图。图来自明日方舟：终末地。"></canvas>
-              <picture class="stage-fallback-picture">
-                <source srcset="assets/demo/01.webp" type="image/webp">
-                <img class="stage-fallback" src="assets/demo/01.jpg" alt="圆屏上的演示图：明日方舟终末地的角色肖像。三维模型未能载入时仍显示这张图。" width="1024" height="1024" fetchpriority="high">
-              </picture>
+
+        <div class="cinema-layout">
+          <div class="stage">
+            <div class="stage-frame">
+              <div class="stage-glow" aria-hidden="true"></div>
+              <div class="stage-shadow" aria-hidden="true"></div>
+              <div class="stage-view">
+                <canvas id="badge-stage" aria-label="圆形屏幕上正在演示换图。图来自明日方舟：终末地。"></canvas>
+                <picture class="stage-fallback-picture">
+                  <source srcset="assets/demo/01.webp" type="image/webp">
+                  <img class="stage-fallback" src="assets/demo/01.jpg" alt="圆屏上的演示图：明日方舟终末地的角色肖像。三维模型未能载入时仍显示这张图。" width="1024" height="1024" fetchpriority="high">
+                </picture>
+              </div>
             </div>
-            <button type="button" id="demo-toggle" class="pause">播放画面</button>
+            <p id="stage-status" class="status is-quiet" role="status">正在把演示图放到圆屏上。</p>
           </div>
-          <p id="stage-status" class="status is-quiet" role="status">正在把演示图放到圆屏上。</p>
+
+          <div class="cinema-copy" aria-hidden="true">
+            <div class="cap-card cap-place is-active" data-cap="0">
+              <p class="cap-eyebrow">01 / 05 · 静态显示</p>
+              <p class="cap-title">裁成正圆，点亮即呈现。</p>
+              <p class="cap-body">466×466 圆形 AMOLED 屏幕与 CNC 铝合金外框贴合，浏览器本地裁切编码，写入后即刻停留在掌心。</p>
+              <p class="cap-meta"><span>466 × 466 px</span><span>JPEG 0.85</span></p>
+            </div>
+            <div class="cap-card cap-fade" data-cap="1">
+              <p class="cap-eyebrow">02 / 05 · 黑场淡变</p>
+              <p class="cap-title">先落入纯黑，再柔和亮起。</p>
+              <p class="cap-body">亮度先平稳收到纯黑，在黑场中完成换图，再重新点亮。两张画面绝不重叠发灰，也是设备的默认切换方式。</p>
+              <p class="cap-meta"><span>130 ms 暗下</span><span>170 ms 亮起</span></p>
+            </div>
+            <div class="cap-card cap-slide" data-cap="2">
+              <p class="cap-eyebrow">03 / 05 · 水平推入</p>
+              <p class="cap-title">硬边推进，干脆利落。</p>
+              <p class="cap-body">旧画面向左滑出，新画面从右侧平滑推入，接缝清晰锐利，完整过渡约 300 毫秒。</p>
+              <p class="cap-meta"><span>约 300 ms</span><span>Smoothstep 缓动</span></p>
+            </div>
+            <div class="cap-card cap-ripple" data-cap="3">
+              <p class="cap-eyebrow">04 / 05 · 径向涟漪</p>
+              <p class="cap-title">从圆心扩开的一道涟漪。</p>
+              <p class="cap-body">新画面自屏幕中心向外涌现，边界清晰，内侧微亮、外侧微暗，以更低开销呈现层次感。</p>
+              <p class="cap-meta"><span>约 400 ms</span><span>内外双环明暗边</span></p>
+            </div>
+            <div class="cap-card cap-spin" data-cap="4">
+              <p class="cap-eyebrow">05 / 05 · 静置动效</p>
+              <p class="cap-title">放着，它也会慢慢转动。</p>
+              <p class="cap-body">默认顺时针约 24 秒一圈；也可设为关闭静止、每 7.5 秒微移防烧屏，或随内置 IMU 跟随设备重力朝向。</p>
+              <p class="cap-meta"><span>24 s / 圈</span><span>像素微移 · 重力朝向</span></p>
+            </div>
+          </div>
         </div>
-        <p class="demo-credit">演示图来自《明日方舟：终末地》，© HYPERGRYPH / GRYPHLINE</p>
-        <div class="overlay" aria-hidden="true">
-          <p class="cap cap-place">一张图，就在圆屏上。</p>
-          <p class="cap cap-fade">先黑下去，再亮起来。</p>
-          <p class="cap cap-slide">从右边推进来。</p>
-          <p class="cap cap-ripple">从圆心扩开。</p>
-          <p class="cap cap-spin">放着，它也会转。</p>
+
+        <div class="scene-foot">
+          <div class="cinema-dock" role="navigation" aria-label="演示章节切换">
+            <div class="chapter-pills">
+              <button type="button" class="chapter-pill is-active" data-beat="0">放图</button>
+              <button type="button" class="chapter-pill" data-beat="1">黑场</button>
+              <button type="button" class="chapter-pill" data-beat="2">推入</button>
+              <button type="button" class="chapter-pill" data-beat="3">涟漪</button>
+              <button type="button" class="chapter-pill" data-beat="4">转动</button>
+            </div>
+            <div class="cinema-progress" aria-hidden="true"><span class="cinema-progress-bar"></span></div>
+          </div>
+          <div class="foot-controls">
+            <button type="button" id="demo-toggle" class="pause">暂停画面</button>
+            <p class="demo-credit">演示图来自《明日方舟：终末地》，© HYPERGRYPH / GRYPHLINE</p>
+          </div>
         </div>
       </div>
-      <article class="beat" id="place">
-        <h2>先放上一张图。</h2>
-        <p>圆屏里是一张《明日方舟：终末地》的宣传图。裁成圆之后，就停在这块屏上。往下看的是换图，每一段一种。</p>
-        <img class="beat-still" src="assets/demo/01.jpg" alt="圆屏上的第一张演示图，是一张角色肖像。" width="1024" height="1024" loading="lazy">
-      </article>
-      <article class="beat" id="fade">
-        <h2>黑场淡变。</h2>
-        <p>亮度先落到黑，图在黑里换掉，再亮起来。两张图不会叠在一起。暗下去大约 130 毫秒，亮回来大约 170 毫秒。</p>
-        <img class="beat-still" src="assets/demo/02.jpg" alt="黑场之后亮起的第二张演示图。" width="1024" height="1024" loading="lazy">
-      </article>
-      <article class="beat" id="slide">
-        <h2>水平推入。</h2>
-        <p>旧图往左走，新图从右边进来，中间是一条硬边。整段大约 300 毫秒。</p>
-        <img class="beat-still" src="assets/demo/03.jpg" alt="从右侧推入后留下的第三张演示图。" width="1024" height="1024" loading="lazy">
-      </article>
-      <article class="beat" id="ripple">
-        <h2>径向涟漪。</h2>
-        <p>新图从圆心扩开。边是硬的，里侧略亮，外侧略暗。大约 400 毫秒。</p>
-        <img class="beat-still" src="assets/demo/04.jpg" alt="从圆心扩开后留下的第四张演示图。" width="1024" height="1024" loading="lazy">
-      </article>
-      <article class="beat" id="spin">
-        <h2>放着，也会转。</h2>
-        <p>默认是顺时针。设备上大约 24 秒一圈，页面开头转得更快，方便看清，也可以暂停。放着时还可以关掉运动，或者只挪一两个像素。滚过这一段，画面会转过一个角度。</p>
-        <img class="beat-still is-turned" src="assets/demo/04.jpg" alt="第四张演示图顺时针转过一个角度后的样子。" width="1024" height="1024" loading="lazy">
-      </article>
+
+      <div class="beats">
+        <article class="beat" id="place" data-beat-index="0">
+          <div class="beat-inner">
+            <p class="beat-kicker">01 · 静态显示</p>
+            <h2>先放上一张图。</h2>
+            <p>圆屏里是一张《明日方舟：终末地》的宣传图。裁成 466×466 正圆后直接呈现于这块 AMOLED 屏上。向下滚动，逐段预览固件内置的每一种切换动效。</p>
+            <img class="beat-still" src="assets/demo/01.jpg" alt="圆屏上的第一张演示图，是一张角色肖像。" width="1024" height="1024" loading="lazy">
+          </div>
+        </article>
+        <article class="beat" id="fade" data-beat-index="1">
+          <div class="beat-inner">
+            <p class="beat-kicker">02 · 黑场淡变</p>
+            <h2>黑场淡变。</h2>
+            <p>亮度先落到纯黑，画面在黑场里完成切换，再柔和亮起。两张图不会叠在一起。暗下去大约 130 毫秒，亮回来大约 170 毫秒。</p>
+            <img class="beat-still" src="assets/demo/02.jpg" alt="黑场之后亮起的第二张演示图。" width="1024" height="1024" loading="lazy">
+          </div>
+        </article>
+        <article class="beat" id="slide" data-beat-index="2">
+          <div class="beat-inner">
+            <p class="beat-kicker">03 · 水平推入</p>
+            <h2>水平推入。</h2>
+            <p>旧图向左移出，新图从右侧顺滑推入，中间是一条干净的硬边。整段过渡大约 300 毫秒。</p>
+            <img class="beat-still" src="assets/demo/03.jpg" alt="从右侧推入后留下的第三张演示图。" width="1024" height="1024" loading="lazy">
+          </div>
+        </article>
+        <article class="beat" id="ripple" data-beat-index="3">
+          <div class="beat-inner">
+            <p class="beat-kicker">04 · 径向涟漪</p>
+            <h2>径向涟漪。</h2>
+            <p>新图从圆心向外扩开。边缘清晰不发虚，里侧略亮，外侧略暗。整段大约 400 毫秒。</p>
+            <img class="beat-still" src="assets/demo/04.jpg" alt="从圆心扩开后留下的第四张演示图。" width="1024" height="1024" loading="lazy">
+          </div>
+        </article>
+        <article class="beat" id="spin" data-beat-index="4">
+          <div class="beat-inner">
+            <p class="beat-kicker">05 · 静置动效</p>
+            <h2>放着，也会转。</h2>
+            <p>默认顺时针旋转，设备上大约 24 秒一圈；页面开头转得更快方便看清，也可随时暂停。此外还支持静止关闭、每 7.5 秒像素微移，或随设备重力朝向旋转。</p>
+            <img class="beat-still is-turned" src="assets/demo/04.jpg" alt="第四张演示图顺时针转过一个角度后的样子。" width="1024" height="1024" loading="lazy">
+          </div>
+        </article>
+      </div>
     </section>
 
-    <section class="band band-gray" aria-labelledby="highlights-title">
+    <section class="band band-gray" id="highlights" aria-labelledby="highlights-title">
       <div class="band-inner">
-        <h2 id="highlights-title">换图就这几种。</h2>
+        <div class="section-head reveal">
+          <p class="section-eyebrow">核心亮点</p>
+          <h2 id="highlights-title">专为随身圆屏打磨。</h2>
+        </div>
+
         <div class="bento">
-          <article>
-            <h3>黑场淡变</h3>
-            <p>亮度先收到黑，图在黑里换掉，再亮起来。暗下去大约 130 毫秒，亮回来大约 170 毫秒。设备上的默认换法就是这一种。</p>
+          <article class="bento-card bento-hero reveal">
+            <div class="bento-copy">
+              <p class="bento-eyebrow">显示</p>
+              <p class="bento-stat">466×466</p>
+              <h3>1.75 英寸圆形 AMOLED 触控屏</h3>
+              <p>适配 Waveshare ESP32-S3-Touch-AMOLED-1.75C。黑场像素彻底熄灭，画面饱满锐利，支持直接触屏切图与轻点唤醒。</p>
+            </div>
+            <div class="bento-visual" aria-hidden="true">
+              <div class="mini-badge">
+                <picture>
+                  <source srcset="assets/demo/01.webp" type="image/webp">
+                  <img src="assets/demo/01.jpg" alt="" width="240" height="240" loading="lazy">
+                </picture>
+              </div>
+            </div>
           </article>
-          <article>
-            <h3>水平推入</h3>
-            <p>旧图往左，新图从右边进来。大约 300 毫秒，接缝是硬的。</p>
+
+          <article class="bento-card reveal">
+            <p class="bento-eyebrow">直连</p>
+            <p class="bento-stat-sm">USB-C</p>
+            <h3>打开浏览器就能连</h3>
+            <p>通过桌面 Chromium 或 Firefox 151+ 的 Web Serial 直连 115200 baud 串口。不需要驱动、Python 服务、PWA 或本机助手。</p>
           </article>
-          <article>
-            <h3>径向涟漪</h3>
-            <p>从圆心扩开。大约 400 毫秒。里侧略亮，外侧略暗，边不发虚。</p>
+
+          <article class="bento-card reveal">
+            <p class="bento-eyebrow">隐私与校验</p>
+            <p class="bento-stat-sm">0 <em>云端上传</em></p>
+            <h3>全程本机处理与校验</h3>
+            <p>裁切、0.85 质量 JPEG 编码与传输 CRC 均在浏览器内完成。固件先在临时文件完成校验并成功解码，再原子切换，绝不覆盖损坏原图。</p>
+          </article>
+
+          <article class="bento-card reveal">
+            <p class="bento-eyebrow">转场与静置</p>
+            <h3>四种切图，四种静置姿态</h3>
+            <p>切图支持直接切换、黑场淡变、水平推入与径向涟漪；静置支持关闭、每 7.5 秒微移防烧屏、24 秒慢转与 IMU 重力朝向。</p>
+          </article>
+
+          <article class="bento-card reveal">
+            <p class="bento-eyebrow">离机运行</p>
+            <h3>拔线即走，独立轮播</h3>
+            <p>顺序与随机袋轮播均由固件独立执行，关闭网页或拔掉 USB 仍继续工作。电池模式通过 AXP2101 软件关机，USB 熄屏保持串口在线。</p>
+          </article>
+
+          <article class="bento-card bento-wide reveal">
+            <div class="bento-copy">
+              <p class="bento-eyebrow">固件维护</p>
+              <h3>浏览器即可仅写入 APP 分区</h3>
+              <p>可在控制台拉取同源镜像并核验 SHA-256，或选择本机编译的 firmware.bin。严格写入 0x10000 起始、上限 3 MiB 的应用分区，保留 LittleFS 图库与已存设置。</p>
+            </div>
+            <div class="bento-spec-pills" aria-hidden="true">
+              <span>0x10000 起始偏移</span>
+              <span>上限 0x300000</span>
+              <span>eraseAll = false</span>
+              <span>保留图库与设置</span>
+            </div>
           </article>
         </div>
-        <p class="fine">也可以直接切过去。放着的时候可以关掉运动、每 7.5 秒挪一两个像素、顺时针转一圈约 24 秒，或者跟着设备的朝向。演示图来自《明日方舟：终末地》宣传图，© HYPERGRYPH / GRYPHLINE，不是这个项目的素材。</p>
       </div>
     </section>
 
-    <section class="band" id="console">
+    <section class="band" id="console" aria-labelledby="console-title">
       <div class="band-inner band-center">
-        <h2>自己的图，在控制台里裁。</h2>
-        <p>裁成圆、传上去、改换法和转动，都在那一页。点连接之后，才由你选择串口。</p>
-        <a class="pill" href="console/">打开控制台</a>
-        <figure class="shot">
+        <div class="section-head section-head-center reveal">
+          <p class="section-eyebrow">HTTPS Web Serial 控制台</p>
+          <h2 id="console-title">自己的图，在浏览器里裁好就传。</h2>
+          <p class="section-lead">选择、拖放或粘贴 JPG、PNG、WebP 图片，在正圆参考框里调整构图。仅在你主动点击连接并挑选串口后，网页才会与徽章建立通信。</p>
+          <div class="section-actions">
+            <a class="pill" href="console/">打开控制台</a>
+            <a class="link" href="https://github.com/ocean-sudo/electronic-badge">查看源码 ›</a>
+          </div>
+        </div>
+
+        <figure class="browser-frame reveal">
+          <div class="browser-bar" aria-hidden="true">
+            <span class="browser-dots"><i></i><i></i><i></i></span>
+            <span class="browser-url">electronic-badge-project.github.io/electronic-badge/console/</span>
+          </div>
           <picture>
             <source media="(max-width: 40em)" srcset="assets/console-mobile.webp">
             <img src="assets/console-desktop.webp" alt="网页控制台的裁切界面。截图时未连接徽章，预览图为合成素材。" width="1440" height="900" loading="lazy">
           </picture>
+          <figcaption class="shot-caption">离线裁切界面实景截图（未连接真实设备，画面为合成演示素材）。</figcaption>
         </figure>
       </div>
     </section>
 
-    <section class="notes" id="notes" aria-label="使用细节">
+    <section class="band band-gray" id="specs" aria-labelledby="specs-title">
       <div class="band-inner">
-        <h2>需要时再看的细节。</h2>
-        <details id="connect">
-          <summary>怎么连上，权限留在哪</summary>
-          <p>用 HTTPS 打开控制台，接上 USB，点击“连接徽章”。浏览器权限选择必须由你自己触发。不需要 Python 服务、PWA 或本机助手。</p>
-          <p>串口权限绑定 origin，而不是项目路径。同一 <code>*.github.io</code> 主机名下的其他仓库页面可能同源，并看见已经授权的端口。只在信任的站点授权。需要隔开时，用单独的子域。</p>
-        </details>
-        <details id="decode">
-          <summary>图片怎么解码</summary>
-          <p>设备用 ESP32-S3 ROM 里的 TJpgDec 解码 JPEG。WebP 由浏览器转成 JPEG，设备不直接解 WebP。一次实测里，42 张自然照片的解码路径大约 228–284 毫秒，包含读文件、CRC 和 RGB 转换，会随图片和存储而变化，不是性能承诺。浏览器编码质量参数是 0.85。</p>
-          <p>切换可以是直接、淡变、水平推入，或成本较低的径向涟漪。涟漪用比较硬的边缘，换更低的渲染开销。</p>
-        </details>
-        <details id="power">
-          <summary>睡眠和供电</summary>
-          <p>USB 或 VBUS（包括充电器）供电，或者电源状态还不知道时，睡眠只关闭显示和 IMU，USB 控制保持在线，可以点触屏唤醒。电池供电时，手动 SLEEP、电池闲置超时，以及熄屏后拔掉 USB 改由电池供电，都会在当前操作完成、手指松开、电源芯片准备好之后，请求 AXP2101 软件关机。这不是 ESP32 深度睡眠，也不靠 GPIO3 的 EXT0 唤醒。</p>
-          <p>关机后按住 POWER 大约两秒冷启动。电池闲置超时默认关闭。重启会清掉内存里的播放历史。已经保存的设置还在。实际耗电还没有测过。</p>
-        </details>
+        <div class="section-head reveal">
+          <p class="section-eyebrow">实测边界与关键参数</p>
+          <h2 id="specs-title">清楚透明，不虚标。</h2>
+        </div>
+
+        <dl class="specs-grid">
+          <div class="spec-item reveal">
+            <dt>屏幕与编码</dt>
+            <dd><strong>466×466</strong><span>圆形 AMOLED，浏览器输出 JPEG（质量 0.85）</span></dd>
+          </div>
+          <div class="spec-item reveal">
+            <dt>PSRAM 帧工作集</dt>
+            <dd><strong>2.07 <em>MiB</em></strong><span>5 帧 RGB565 缓冲另加 4 KiB JPEG 解码工作区</span></dd>
+          </div>
+          <div class="spec-item reveal">
+            <dt>解码路径实测<sup>1</sup></dt>
+            <dd><strong>228–284 <em>ms</em></strong><span>42 张自然照片含读文件、CRC 与 RGB 转换</span></dd>
+          </div>
+          <div class="spec-item reveal">
+            <dt>APP 刷写边界</dt>
+            <dd><strong>0x10000</strong><span>单 factory 分区上限 3 MiB，无 OTA 自动回滚</span></dd>
+          </div>
+        </dl>
+      </div>
+    </section>
+
+    <section class="notes" id="notes" aria-labelledby="notes-title">
+      <div class="band-inner">
+        <div class="section-head reveal">
+          <p class="section-eyebrow">技术细节</p>
+          <h2 id="notes-title">需要时再细看。</h2>
+        </div>
+
+        <div class="accordion">
+          <details id="connect">
+            <summary>怎么连上，串口权限留在哪？</summary>
+            <div class="details-body">
+              <p>在支持 Web Serial 的桌面 Chromium 系浏览器或 Firefox 151+ 中用 HTTPS 打开控制台，接上支持数据传输的 USB 线，点击“连接徽章”。浏览器设备选择器必须由你自己触发，页面不依赖 Python 服务、PWA 或本机助手。</p>
+              <p>Web Serial 权限绑定在 <strong>origin（协议 + 主机名 + 端口）</strong>，而不是项目路径。同一 <code>*.github.io</code> 主机名下的其他仓库页面可能同源并看见已授权的端口。只在信任的站点授权；需要严格隔离时，请部署到独立子域。</p>
+            </div>
+          </details>
+
+          <details id="decode">
+            <summary>图片在设备端如何解码与校验？</summary>
+            <div class="details-body">
+              <p>浏览器将 JPG、PNG 或 WebP 裁切并编码为 466×466 JPEG（<code>Canvas toBlob</code> 质量参数 0.85）；设备端使用 ESP32-S3 ROM 内置的 TJpgDec 软件解码 JPEG，不直接解 WebP。上传先写入 <code>/upload.tmp</code>，完成传输 CRC 与实际解码验证后才原子替换目标槽位。</p>
+              <p>在 42 张自然照片实测样本中，读取、CRC、JPEG 解码和 RGB 转换约 228–284 毫秒，直接显示并确认约 301–356 毫秒（不含上传时延），会随图像内容与存储状态波动，不作为通用性能保证。</p>
+            </div>
+          </details>
+
+          <details id="power">
+            <summary>睡眠、供电与 AXP2101 关机策略</summary>
+            <div class="details-body">
+              <p>USB 或 VBUS（含充电器）供电，或电源状态尚未就绪时，睡眠只关闭屏幕和 IMU，USB 串口控制保持在线，轻点触屏即可唤醒。</p>
+              <p>电池供电时，手动执行 SLEEP、触发电池闲置超时，或熄屏后拔线转为电池供电，均会在当前操作结束、手指松开且电源芯片就绪后，请求 AXP2101 软件关机。这不是 ESP32 深度睡眠，也不靠 GPIO3 EXT0 唤醒；关机后长按 POWER 约 2 秒冷启动。电池闲置超时默认关闭（0），重启会清空内存中的 6 条播放历史，已保存的设置保留。实际耗电尚未实测。</p>
+            </div>
+          </details>
+
+          <details id="firmware">
+            <summary>浏览器固件更新的安全边界</summary>
+            <div class="details-body">
+              <p>控制台可从同源 Pages 镜像拉取最新稳定版 <code>firmware.bin</code> 与 <code>SHA256SUMS</code> 进行完整性校验，也支持直接选取本机编译的固件文件。SHA-256 用于验证字节完整性，不代表来源签名，请仅在信任仓库维护者时使用。</p>
+              <p>刷写需先断开常规控制，手动按住 BOOT 并短按 RESET/EN 进入 ROM 下载模式，勾选双重确认后使用固定版 <code>esptool-js 0.7.0</code> 仅写入 <code>0x10000</code> 起的 APP 分区（上限 <code>0x300000</code>，<code>eraseAll=false</code>），不触碰 LittleFS、NVS、bootloader 或分区表。该分区表仅有一个 <code>factory</code> 槽位，没有 OTA 回滚；v1 RGB565 旧图不被 v2 读取，升级前请先在 v1 下导出备份。</p>
+            </div>
+          </details>
+        </div>
       </div>
     </section>
   </main>
 
   <footer class="footer">
     <div class="band-inner">
-      <p class="footnotes">演示图来自《明日方舟：终末地》宣传图，© HYPERGRYPH / GRYPHLINE，只用来看换图，不是本项目的素材。画面在浏览器里准备，不上传。</p>
-      <nav class="footer-nav" aria-label="页脚">
+      <div class="footnotes">
+        <p><sup>1</sup> 实测数据来自 42 张已保存自然照片样本（读文件、CRC 校验、TJpgDec 解码与 RGB 转换约 228–284 ms，含显示确认约 301–356 ms），随图片与存储状态变化，非跨设备承诺。</p>
+        <p><sup>2</sup> 演示图来自《明日方舟：终末地》宣传图，© HYPERGRYPH / GRYPHLINE，仅用于演示圆屏切换动效，不属于本项目素材。所有个人图片均在浏览器本地准备，不上传服务器。</p>
+      </div>
+      <nav class="footer-nav" aria-label="页脚导航">
         <div>
-          <p class="footer-label">使用</p>
+          <p class="footer-label">探索</p>
           <ul>
-            <li><a href="console/">控制台</a></li>
-            <li><a href="#place">放图</a></li>
-            <li><a href="#fade">黑场</a></li>
-            <li><a href="#connect">连接</a></li>
-            <li><a href="#decode">解码</a></li>
-            <li><a href="#power">供电</a></li>
+            <li><a href="#place">放图演示</a></li>
+            <li><a href="#fade">黑场淡变</a></li>
+            <li><a href="#slide">水平推入</a></li>
+            <li><a href="#ripple">径向涟漪</a></li>
+            <li><a href="#spin">静置转动</a></li>
           </ul>
         </div>
         <div>
-          <p class="footer-label">项目</p>
+          <p class="footer-label">功能与工具</p>
           <ul>
-            <li><a href="https://github.com/ocean-sudo/electronic-badge">仓库</a></li>
+            <li><a href="console/">打开 Web Serial 控制台</a></li>
+            <li><a href="#highlights">核心亮点</a></li>
+            <li><a href="#console">控制台预览</a></li>
+            <li><a href="#specs">实测参数</a></li>
+          </ul>
+        </div>
+        <div>
+          <p class="footer-label">技术说明</p>
+          <ul>
+            <li><a href="#connect">串口与权限边界</a></li>
+            <li><a href="#decode">JPEG 编码与解码</a></li>
+            <li><a href="#power">供电与 AXP2101 关机</a></li>
+            <li><a href="#firmware">APP 固件更新</a></li>
+          </ul>
+        </div>
+        <div>
+          <p class="footer-label">开源项目</p>
+          <ul>
+            <li><a href="https://github.com/ocean-sudo/electronic-badge">GitHub 源码仓库</a></li>
+            <li><a href="https://github.com/ocean-sudo/electronic-badge/releases">固件发布页</a></li>
           </ul>
         </div>
       </nav>
-      <p class="legal">USB 图片徽章</p>
+      <div class="footer-bottom">
+        <p class="legal">USB 图片徽章 · 面向 Waveshare ESP32-S3-Touch-AMOLED-1.75C</p>
+        <p class="legal">纯静态 HTTPS Web Serial · 无需后端</p>
+      </div>
     </div>
   </footer>
 
